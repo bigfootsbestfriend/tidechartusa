@@ -536,7 +536,7 @@ GUIDE = """
 <h2>The curve</h2>
 <p>The wavy line is the predicted water height. Peaks are <strong>high tides</strong> and dips are <strong>low tides</strong>.
 The time between a high and the next low is usually a little over six hours, so on most of the US coast you get two of each a day.
-The steepest part of the curve, halfway between a high and a low, is when the water moves fastest.</p>
+The steepest part of the curve, halfway between a high and a low, is when the water rises or falls fastest.</p>
 
 <h2>The numbers</h2>
 <p>Heights are measured in feet from a zero line called <strong>mean lower low water (MLLW)</strong>: the average of the lowest
