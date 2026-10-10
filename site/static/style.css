@@ -1,0 +1,101 @@
+/* Tide Chart USA. Light by default, dark when the device asks for it. System fonts only (fast). */
+:root {
+  --bg: #f4f8fa; --card: #ffffff; --ink: #11232c; --muted: #536a75; --line: #d6e3e9;
+  --sea: #0b5c7a; --sea-2: #1689ad; --foam: #d9f1f8; --high: #0b5c7a; --low: #b5651d; --now: #d6336c;
+  --sun: rgba(255, 196, 0, .10);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1419; --card: #122028; --ink: #e5f0f4; --muted: #9db3bd; --line: #24363f;
+    --sea: #6cc7e3; --sea-2: #3aa8cc; --foam: #12313d; --high: #6cc7e3; --low: #f0a35e; --now: #ff6b9a;
+    --sun: rgba(255, 196, 0, .07);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--sea); }
+a:hover { color: var(--sea-2); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+h1 { font-size: clamp(1.6rem, 5vw, 2.3rem); line-height: 1.15; margin: 1.2rem 0 .3rem; text-wrap: balance; }
+h2 { font-size: 1.3rem; margin: 2rem 0 .6rem; }
+.lede { font-size: 1.1rem; color: var(--muted); max-width: 62ch; }
+.sub { color: var(--muted); margin: 0 0 1rem; font-size: .95rem; }
+
+.top { background: var(--sea); color: #fff; }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; flex-wrap: wrap; }
+.brand { color: #fff; text-decoration: none; font-weight: 700; display: inline-flex; gap: 8px; align-items: center; }
+.brand svg { width: 26px; height: 26px; fill: #7fd3e8; }
+.top nav a { color: #e4f6fb; margin-left: 16px; text-decoration: none; font-size: .95rem; }
+.top nav a:hover { color: #fff; text-decoration: underline; }
+.crumbs { font-size: .85rem; color: var(--muted); margin-top: 14px; }
+.crumbs a { color: var(--muted); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.today-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.today h2 { margin: 0; font-size: 1.15rem; }
+.now { margin: 6px 0 0; font-size: .98rem; }
+.chart { width: 100%; height: auto; display: block; margin: 10px 0 4px; }
+.chart .area { fill: var(--foam); }
+.chart .line { fill: none; stroke: var(--sea); stroke-width: 2.5; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .zero { stroke: var(--muted); stroke-dasharray: 3 4; }
+.chart .day { fill: var(--sun); }
+.chart .ax { fill: var(--muted); font-size: 11px; }
+.chart .lab { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+.chart .pt.H { fill: var(--high); } .chart .pt.L { fill: var(--low); }
+.chart .nowline { stroke: var(--now); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.chart .nowpt { fill: var(--now); stroke: var(--card); stroke-width: 2; }
+.tlist { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.tlist li { background: var(--bg); border-radius: 10px; padding: 8px 10px; border-left: 4px solid var(--high); }
+.tlist li.L { border-left-color: var(--low); }
+.tlist b { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.tlist span { color: var(--muted); }
+.sunline { color: var(--muted); font-size: .9rem; margin: 6px 0 0; }
+
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.tides { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; font-size: .93rem; }
+.tides th, .tides td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tides thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tides tbody th { white-space: nowrap; font-weight: 600; }
+.tides td:not(.evs) { white-space: nowrap; color: var(--muted); }
+.evs { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ev { white-space: nowrap; }
+.ev b { color: var(--high); margin-right: 2px; } .ev.L b { color: var(--low); }
+.ev i { font-style: normal; color: var(--muted); }
+.note { font-size: .88rem; color: var(--muted); }
+ol.dl li, ul.facts li { margin: 4px 0; }
+ul.near { list-style: none; padding: 0; columns: 2 220px; }
+ul.near li { margin: 4px 0; } ul.near span { color: var(--muted); font-size: .85rem; }
+
+.hero { padding: 8px 0 4px; }
+.search { position: relative; max-width: 560px; }
+.search input, .filter input { width: 100%; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.results { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.results a { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; text-decoration: none; color: var(--ink); border-bottom: 1px solid var(--line); }
+.results a:hover, .results a:focus { background: var(--foam); }
+.results span { color: var(--muted); }
+.results .none { padding: 12px 14px; color: var(--muted); }
+ul.states { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+ul.states a { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); }
+ul.states li { display: contents; }
+ul.states span { color: var(--muted); }
+ul.states a:hover { border-color: var(--sea-2); }
+.filter { display: block; max-width: 420px; margin: 12px 0; }
+.filter span { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+ul.stations { columns: 2 260px; padding-left: 18px; }
+ul.stations li { margin: 3px 0; break-inside: avoid; }
+.tag { font-size: .72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 4px; }
+.prose { max-width: 68ch; }
+.explain ul { padding-left: 20px; }
+
+.foot { margin-top: 48px; padding: 20px 0 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+.foot a { color: var(--muted); }
+a:focus-visible, input:focus-visible { outline: 3px solid var(--sea-2); outline-offset: 2px; }
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  .top nav a { margin-left: 12px; }
+  .chart .lab { font-size: 13px; }
+}

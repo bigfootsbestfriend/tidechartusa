@@ -1,0 +1,46 @@
+name: Nightly NOAA refresh and deploy
+
+on:
+  schedule:
+    - cron: "17 7 * * *"   # daily 07:17 UTC (about 3 AM Eastern), before most people check tides
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Predictions aren't committed (they change every day); each run downloads a fresh month.
+      # If more than 5% of stations fail, fetch.py exits non-zero and yesterday's site stays up.
+      - name: Download NOAA predictions
+        run: python3 collector/fetch.py --workers 6
+      - name: Build site
+        run: python3 site/build.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
