@@ -119,7 +119,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "1"
+CSS_VER = "3"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -260,44 +260,47 @@ def load_station(st):
 
 
 def describe(st, tz, events, days):
-    """Facts for the write-up, all computed from this station's own predictions."""
+    """Facts for the write-up, all computed from this station's own predictions for `days`."""
+    window = set(days)
     by_day = {}
     for t, v, k in events:
-        by_day.setdefault(dt.datetime.fromtimestamp(t, tz).date(), []).append((t, v, k))
-    highs = [v for t, v, k in events if k == "H"]
-    lows = [v for t, v, k in events if k == "L"]
-    ranges = []
-    for a, b in zip(events, events[1:]):
-        if a[2] != b[2]:
-            ranges.append(abs(a[1] - b[1]))
+        d = dt.datetime.fromtimestamp(t, tz).date()
+        if d in window:
+            by_day.setdefault(d, []).append((t, v, k))
+    inside = [e for d in days for e in by_day.get(d, [])]
+    ranges = [abs(a[1] - b[1]) for a, b in zip(inside, inside[1:]) if a[2] != b[2]]
     full = [d for d in days if d in by_day]
     per_day = statistics.mean(sum(1 for e in by_day[d] if e[2] == "H") for d in full) if full else 0
     # Inequality: how different the two daily highs are, compared with the typical range.
     diffs = [abs(h[0][1] - h[1][1]) for d in full
              for h in [[e for e in by_day[d] if e[2] == "H"]] if len(h) >= 2]
     mean_range = statistics.mean(ranges) if ranges else 0
-    if per_day < 1.3:
+    if per_day < 1.5:
         kind = "diurnal"
     elif diffs and mean_range and statistics.mean(diffs) > 0.25 * mean_range:
         kind = "mixed"
     else:
         kind = "semidiurnal"
-    day_ranges = sorted(((max(v for _, v, _ in by_day[d]) - min(v for _, v, _ in by_day[d]), d) for d in full),
-                        reverse=True)
+    # A day's range comes from the curve, not just that day's turns: a day with a single low
+    # still has the water falling into it and rising out of it.
+    day_ranges = []
+    for d in full:
+        a = dt.datetime.combine(d, dt.time(0), tz).timestamp()
+        pts = [v for _, v in curve_points(events, a, a + 86400, step=1200)]
+        if pts:
+            day_ranges.append((max(pts) - min(pts), d))
+    day_ranges.sort(reverse=True)
     big = []
     for r, d in day_ranges:
         if all(abs((d - b).days) >= 5 for _, b in big):
             big.append((r, d))
         if len(big) == 2:
             break
-    small_day = day_ranges[-1] if day_ranges else None
-    top_high = max((e for e in events if e[2] == "H" and dt.datetime.fromtimestamp(e[0], tz).date() in by_day
-                    and dt.datetime.fromtimestamp(e[0], tz).date() in set(full)), key=lambda e: e[1], default=None)
-    low_low = min((e for e in events if e[2] == "L"
-                   and dt.datetime.fromtimestamp(e[0], tz).date() in set(full)), key=lambda e: e[1], default=None)
-    return {"kind": kind, "per_day": per_day, "mean_range": mean_range, "highs": highs, "lows": lows,
-            "big": big, "small": small_day, "top_high": top_high, "low_low": low_low, "by_day": by_day,
-            "minus": sum(1 for v in lows if v < 0)}
+    return {"kind": kind, "mean_range": mean_range, "big": big,
+            "small": day_ranges[-1] if day_ranges else None,
+            "top_high": max((e for e in inside if e[2] == "H"), key=lambda e: e[1], default=None),
+            "low_low": min((e for e in inside if e[2] == "L"), key=lambda e: e[1], default=None),
+            "by_day": by_day, "minus": sum(1 for e in inside if e[2] == "L" and e[1] < 0)}
 
 
 KIND_TEXT = {
@@ -319,9 +322,9 @@ def writeup(st, name, f, tz):
         if len(f["big"]) > 1:
             r2, d2 = f["big"][1]
             s += f", and again around {day_label(d2)} ({ft(r2)})"
-        s += (". Those spring tides follow the new and full moon by a day or two." if f["kind"] != "diurnal" else
-              ". With one tide a day, the biggest ranges here follow the moon's swing north and south of the "
-              "equator more than its phase.")
+        s += (". Those spring tides follow the new and full moon by a day or two." if f["kind"] == "semidiurnal" else
+              ". Here the biggest ranges depend on the moon's phase and on how far north or south of the equator "
+              "it is, so they don't always line up with the new and full moon.")
         if f["small"]:
             s += (f" The calmest day is {day_label(f['small'][1])}, with only {ft(f['small'][0])} between the "
                   f"day's highest and lowest water.")
@@ -367,9 +370,9 @@ def station_page(st, ctx):
     tz, events, days = ctx["tz"], ctx["events"], ctx["days"]
     name = st["pretty"]
     state = STATES.get(st["state"], st["state"])
-    f = describe(st, tz, events, days)
-    sun_by_day = {d: astro.sun(st["lat"], st["lng"], d, tz) for d in days}
     today = ctx["today"] if ctx["today"] in days else days[0]
+    f = describe(st, tz, events, days[days.index(today):days.index(today) + 31])
+    sun_by_day = {d: astro.sun(st["lat"], st["lng"], d, tz) for d in days}
 
     def bounds(d):
         a = dt.datetime.combine(d, dt.time(0), tz).timestamp()
@@ -495,7 +498,7 @@ stations with their own long-term measurements; the rest are calculated from the
 
 
 def states_index(groups):
-    items = "".join(f'<li><a href="{BASE}tides/{slugify(STATES.get(c, c))}/">{esc(STATES.get(c, c))}</a> <span>{len(g)}</span></li>'
+    items = "".join(f'<li><a href="{BASE}tides/{slugify(STATES.get(c, c))}/">{esc(STATES.get(c, c))} <span>{len(g)}</span></a></li>'
                     for c, g in sorted(groups.items(), key=lambda kv: STATES.get(kv[0], kv[0])))
     return items
 

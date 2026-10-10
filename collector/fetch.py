@@ -13,6 +13,7 @@ import datetime as dt
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -36,15 +37,20 @@ BLANK_STATE_US = {"GUAM": "GU", "MIDWAY": "UM", "WAKE ISLAND": "UM", "JOHNSTON A
 DAYS = 33  # starts yesterday so every US time zone still has "today" when the site is built
 
 
-def get(url, tries=4):
+def get(url, tries=5):
     for n in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
             return json.loads(urllib.request.urlopen(req, timeout=40).read())
+        except urllib.error.HTTPError as ex:
+            # NOAA answers 403/429 when it thinks we're going too fast: back off properly.
+            if n == tries - 1:
+                raise
+            time.sleep((20 if ex.code in (403, 429) else 3) * (n + 1))
         except Exception:
             if n == tries - 1:
                 raise
-            time.sleep(2 * (n + 1))
+            time.sleep(3 * (n + 1))
 
 
 def us_state(s):
@@ -61,7 +67,7 @@ def us_state(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="only fetch this many stations (testing)")
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--workers", type=int, default=3)
     args = ap.parse_args()
 
     stations = []
@@ -95,6 +101,18 @@ def main():
     with ThreadPoolExecutor(args.workers) as pool:
         results = list(pool.map(one, stations))
     failed = {sid: err for sid, err in results if err}
+    # Second, slower pass for anything that failed (usually throttling).
+    retry = [s for s in stations if s["id"] in failed and "No Predictions" not in failed[s["id"]]]
+    if retry:
+        print(f"retrying {len(retry)} stations one at a time")
+        time.sleep(60)
+        for s in retry:
+            sid, err = one(s)
+            if err:
+                failed[sid] = err
+            else:
+                failed.pop(sid, None)
+            time.sleep(1)
     ok = [s for s in stations if s["id"] not in failed]
     (DATA / "stations.json").write_text(json.dumps(
         {"fetched": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "begin": begin,
