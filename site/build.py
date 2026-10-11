@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "23"
+CSS_VER = "24"
 
 
 def ga_tag():
@@ -589,7 +589,11 @@ You can choose a weekly tide email, weather warnings for that stretch of water, 
 def live_section(st, name, ctx):
     zone, buoy, nwr = ctx.get("zone"), ctx.get("buoy"), ctx.get("nwr")
     wt, wl = st["id"] in ctx["sensors"].get("wt", ()), st["id"] in ctx["sensors"].get("wl", ())
-    attrs = (f'data-st="{esc(st["id"])}" data-wt="{int(wt)}" data-wl="{int(wl)}" '
+    # Water temperature sensors go offline now and then: also list the nearest other ones (within 20 miles)
+    # so the browser can fall back to them, saying where the reading is from.
+    wt_alt = [f'{o["id"]}:{d:.0f}:{o["pretty"].replace(",", "").replace(":", " ")}' for d, o in ctx.get("near_wt", [])]
+    attrs = (f'data-st="{esc(st["id"])}" data-wt="{int(wt or bool(wt_alt))}" data-wl="{int(wl)}" '
+             f'data-wt-alt="{esc(",".join(wt_alt))}" '
              f'data-lat="{st["lat"]:.4f}" data-lng="{st["lng"]:.4f}"')
     parts = ['<div class="lv-wx"><div id="lv-wx"><p>Loading the National Weather Service forecast… '
              f'<a href="https://forecast.weather.gov/MapClick.php?lat={st["lat"]:.4f}&amp;lon={st["lng"]:.4f}">'
@@ -601,7 +605,7 @@ def live_section(st, name, ctx):
                      f'<div id="lv-fc"><p>Loading the latest National Weather Service forecast… '
                      f'<a href="https://marine.weather.gov/MapClick.php?zoneid={esc(zid)}">Open it on weather.gov</a>.</p></div></div>')
     obs = []
-    if wt:
+    if wt or wt_alt:
         obs.append('<li id="lv-wt"><b>Water temperature</b> <span>—</span></li>')
     if wl:
         obs.append('<li id="lv-wl"><b>Water level now</b> <span>—</span></li>')
@@ -1452,7 +1456,9 @@ def main():
         near = sorted(((miles(s, o), o) for o in cand), key=lambda p: p[0])
         near = [(d, o) for d, o in near if d <= 40][:6]
         today = built_at.astimezone(tz).date()
-        ctx = {"tz": tz, "events": events, "days": days, "near": near, "today": today,
+        wt_set = set(sensors.get("wt", ()))
+        near_wt = [(d, o) for d, o in sorted(((miles(s, o), o) for o in cand if o["id"] in wt_set), key=lambda p: p[0]) if d <= 20][:3]
+        ctx = {"tz": tz, "events": events, "days": days, "near": near, "today": today, "near_wt": near_wt,
                "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
                "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None,
                "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None,

@@ -118,13 +118,23 @@
     box.hidden = false;
   };
 
-  const loadWaterTemp = async (st) => {
-    try {
-      const j = await getJSON(`${COOPS}&product=water_temperature&date=latest&time_zone=gmt&station=${st}`);
-      const d = j.data && j.data[0];
-      if (!d || d.v === "") return;
-      document.querySelector("#lv-wt span").textContent = `${(+d.v).toFixed(1)} °F (${ago(d.t.replace(" ", "T") + "Z")})`;
-    } catch (e) { document.getElementById("lv-wt").hidden = true; }
+  // This station's sensor first, then the nearest others the page lists, skipping any that are offline
+  // or more than 6 hours old.
+  const loadWaterTemp = async (st, alts) => {
+    const tries = [[st, 0, ""], ...alts.split(",").filter(Boolean).map((x) => x.split(":"))];
+    for (const [id, miles, name] of tries) {
+      try {
+        const j = await getJSON(`${COOPS}&product=water_temperature&date=latest&time_zone=gmt&station=${id}`);
+        const d = j.data && j.data[0];
+        if (!d || d.v === "") continue;
+        const iso = d.t.replace(" ", "T") + "Z";
+        if (Date.now() - Date.parse(iso) > 6 * 3600e3) continue;
+        document.querySelector("#lv-wt span").textContent = `${(+d.v).toFixed(1)} °F (${ago(iso)}` +
+          (id === st ? ")" : `, at ${name}, ${miles} mi away)`);
+        return;
+      } catch (e) { /* try the next sensor */ }
+    }
+    document.querySelector("#lv-wt span").textContent = "Not reporting right now";
   };
 
   const loadWaterLevel = async (st) => {
@@ -170,11 +180,11 @@
   };
 
   if (live) {
-    const { st, zone, office, wt, wl, lat, lng } = live.dataset;
+    const { st, zone, office, wt, wl, lat, lng, wtAlt } = live.dataset;
     if (lat && lng) loadWeather(lat, lng);
     if (zone && office) loadForecast(zone, office);
     loadAlerts(zone, lat, lng);
-    if (wt === "1") loadWaterTemp(st);
+    if (wt === "1") loadWaterTemp(st, wtAlt || "");
     if (wl === "1") loadWaterLevel(st);
   }
 
