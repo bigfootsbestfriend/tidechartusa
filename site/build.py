@@ -40,6 +40,7 @@ BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
 SITE_NAME = "Shorebite"
 # Google Analytics 4 measurement ID (G-...). Empty = no analytics tag.
 GA_ID = os.environ.get("GA_ID", "")
+CF_BEACON = os.environ.get("CF_BEACON", "")  # Cloudflare Web Analytics token (cookieless)
 # Email signups (alerts/ Worker). Empty hides every signup form; set once Resend is verified.
 ALERTS_API = os.environ.get("ALERTS_API", "")
 
@@ -131,11 +132,15 @@ CSS_VER = "33"
 
 
 def ga_tag():
-    if not GA_ID:
-        return ""
-    return (f'\n<script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>'
-            f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
-            f"gtag('js',new Date());gtag('config','{GA_ID}');</script>")
+    out = ""
+    if GA_ID:
+        out += (f'\n<script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>'
+                f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
+                f"gtag('js',new Date());gtag('config','{GA_ID}');</script>")
+    if CF_BEACON:
+        out += ('\n<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
+                f"data-cf-beacon='{{\"token\": \"{CF_BEACON}\"}}'></script>")
+    return out
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -1761,6 +1766,8 @@ We download them every night, so each page always shows the next month. Sunrise,
 ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits and see which pages are useful. It sets cookies "
                   "and collects things like your approximate location, device and the pages you view, not your name or email. "
                   "You can opt out with <a href=\"https://tools.google.com/dlpage/gaoptout\">Google's opt-out add-on</a> or by blocking cookies. "
+                  "We also use Cloudflare Web Analytics, which sets no cookies and only gives us aggregated counts "
+                  "(<a href=\"https://www.cloudflare.com/privacypolicy/\">Cloudflare's privacy policy</a>). "
                   "If we add advertising, this page will be updated to name those partners and explain your choices.</p>") if GA_ID else \
                  ("<p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, "
                   "and this page will be updated to name them and explain your choices.</p>")

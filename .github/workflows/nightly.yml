@@ -59,6 +59,7 @@ jobs:
           SITE_URL: https://shorebite.com
           ALERTS_API: https://alerts.shorebite.com
           GA_ID: G-5PFNWYW3ES
+          CF_BEACON: 5b32ecd667d84cf8ae144f6abae0b0ad
       - name: Keep this download for code-only pushes
         if: steps.data.outputs.cache-matched-key == ''
         uses: actions/cache/save@v4
