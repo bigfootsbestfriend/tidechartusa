@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "16"
+CSS_VER = "18"
 
 
 def ga_tag():
@@ -183,7 +183,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 {body}
 </main>
 <footer class="foot"><div class="wrap">
-<p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>. Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
+<p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
 <p><a href="{BASE}about/">About</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
@@ -688,9 +688,17 @@ def station_page(st, ctx):
         meta, cdist, cev = ctx["cur"]
         data["cur"] = {"name": tidy(meta["name"]), "mi": cdist, "ev": [
             [int(dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz).timestamp()), v, k] for t, v, k in cev]}
-    title = f"{name}, {st['state']} Tide Chart & Tide Times"
-    desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
-            f"sunrise and sunset, and the month ahead. From NOAA station {st['id']}.")
+    town = st.get("town")  # (name, state code, miles, page path) or None
+    if town and town[0].lower() not in name.lower():
+        title = f"{town[0]}, {st['state']} Tide Chart & Tide Times ({name})"
+        desc = (f"Today's high and low tide times for {name} near {town[0]}, {state}, with a tide chart, a 7-day tide table, "
+                f"currents, fishing times and the marine forecast. From NOAA station {st['id']}.")
+    else:
+        title = f"{name}, {st['state']} Tide Chart & Tide Times"
+        desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
+                f"currents, fishing times and the marine forecast. From NOAA station {st['id']}.")
+    near_town = (f' · <a href="{BASE}{town[3]}">near {esc(town[0])}</a> ({town[2]:.0f} mi)' if town and town[2] >= 1
+                 else f' · <a href="{BASE}{town[3]}">{esc(town[0])}</a>' if town else "")
     gmap = f"https://www.google.com/maps?q={st['lat']},{st['lng']}"
     week_html = f"""<h2 id="week">Tide times this week</h2>
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
@@ -710,7 +718,7 @@ def station_page(st, ctx):
     body = f"""
 <article class="station">
 <h1>{esc(name)} tide chart</h1>
-<p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
+<p class="sub">{esc(state)}{near_town} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
 {jump_nav(jumps)}
 <section class="alerts-banner" id="alerts" aria-live="polite" hidden><template class="i-warn">{ico("warn")}</template><template class="i-check">{ico("check")}</template></section>
 <div class="pagetools"><div class="acts-row" id="acts-row" hidden>
@@ -775,12 +783,73 @@ def station_page(st, ctx):
 
 # ---------- other pages ----------
 
-def state_page(code, stations):
+def town_path(name, st):
+    return f"tides-near/{slugify(name)}-{st.lower()}/"
+
+
+def town_page(town, near, nearby_towns):
+    """'Tides near <town>': today's tides at the closest NOAA stations, which is what people searching a town want."""
+    tname, tst = town[0], town[1]
+    state = STATES.get(tst, tst)
+    cards, station_highs = [], []
+    for d, (s, tz, events, today) in near:
+        a = dt.datetime.combine(today, dt.time(0), tz).timestamp()
+        evs = [(dt.datetime.fromtimestamp(t, tz), v, k) for t, v, k in events if a <= t < a + 86400]
+        station_highs.append([(t, v) for t, v, k in events if k == "H" and a - 21600 <= t < a + 108000])
+        times = "".join(f'<li class="{k}"><b title="{"High" if k == "H" else "Low"}">{"▲" if k == "H" else "▼"}</b> {clock(w)} <i>{ft(v)}</i></li>'
+                        for w, v, k in evs)
+        cards.append(f'<a class="spot" href="{BASE}{s["path"]}"><span class="spot-name">{esc(s["pretty"])}'
+                     f'<small>{d:.1f} miles from {esc(tname)}</small></span>{spark(events, a, a + 86400)}<ul>{times}</ul></a>')
+    first_d, (first, ftz, _, ftoday) = near[0]
+    facts = [f"The closest NOAA tide station to {esc(tname)} is <a href=\"{BASE}{first['path']}\">{esc(first['pretty'])}</a>, "
+             f"{first_d:.1f} miles away."]
+    # Compare the same high tide everywhere: the closest station's first high today, and each other station's
+    # high nearest to it (within 5 hours, so it's the same tide arriving, not the next one).
+    a0 = dt.datetime.combine(ftoday, dt.time(0), ftz).timestamp()
+    ref = next(((t, v) for t, v in station_highs[0] if t >= a0), None)
+    same = []
+    if ref:
+        for hs in station_highs:
+            m = min(hs, key=lambda tv: abs(tv[0] - ref[0]), default=None)
+            if m and abs(m[0] - ref[0]) <= 5 * 3600:
+                same.append(m)
+    if len(same) >= 2:
+        spread = round((max(t for t, _ in same) - min(t for t, _ in same)) / 60)
+        lo, hi = min(v for _, v in same), max(v for _, v in same)
+        if spread >= 20 or hi - lo >= 1:
+            facts.append(f"The same high tide reaches these stations up to {spread // 60} h {spread % 60} min apart"
+                         if spread >= 60 else f"The same high tide reaches these stations up to {spread} minutes apart")
+            facts[-1] += f", and peaks anywhere from {ft(lo)} to {ft(hi)}, so use the station closest to where you'll be."
+        else:
+            facts.append(f"These stations are within {max(spread, 1)} minutes and {ft(hi - lo)} of each other, so any of them works for {esc(tname)}.")
+    links = "".join(f'<li><a href="{BASE}{p}">{esc(n)}</a> <span>{d:.0f} mi</span></li>' for d, n, p in nearby_towns)
+    cta = (f'<p class="cta-box">{ico("mail")} <span>Get <a href="{BASE}{first["path"]}#emails">{esc(first["pretty"])} tides by email</a> '
+           f'every Thursday, with a heads-up before the best low tides and when warnings are issued.</span></p>') if ALERTS_API else ""
+    body = f"""
+<h1>Tides near {esc(tname)}, {esc(state)}</h1>
+<p class="lede">High and low tides today, {day_label(ftoday)}, at the {len(near)} NOAA tide station{"s" if len(near) != 1 else ""} closest to {esc(tname)}.
+Tap a station for its full chart, the week ahead, currents, fishing times and the marine forecast.</p>
+<div class="spots">{"".join(cards)}</div>
+<p>{" ".join(facts)}</p>
+{cta}
+{f'<h2>Nearby towns</h2><ul class="near">{links}</ul>' if links else ""}
+<p><a href="{BASE}tides/{slugify(state)}/">All {esc(state)} tide stations</a></p>
+"""
+    path = town_path(tname, tst)
+    crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (f"Tides near {tname}", path)]
+    return path, page(f"{tname}, {tst} Tide Chart & Tide Times Today",
+                      f"High and low tide times today for {tname}, {state}, from the closest NOAA tide stations, with charts, "
+                      f"currents, fishing times and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
+
+
+def state_page(code, stations, towns=()):
     state = STATES.get(code, code)
     refs = sum(1 for s in stations if s["type"] == "R")
     items = "".join(f'<li data-n="{esc(s["pretty"].lower())}"><a href="{BASE}{s["path"]}">{esc(s["pretty"])}</a>'
                     f'{" <span class=tag>reference</span>" if s["type"] == "R" else ""}</li>'
                     for s in sorted(stations, key=lambda s: s["pretty"].lower()))
+    town_list = ("<h2>Tides by town</h2><ul class='towns'>" + "".join(
+        f'<li><a href="{BASE}{p}">{esc(n)}</a></li>' for n, p in sorted(towns)) + "</ul>") if towns else ""
     body = f"""
 <h1>{esc(state)} tide charts</h1>
 <p class="lede">Tide times and charts for {len(stations)} NOAA tide stations in {esc(state)}. {refs} are reference
@@ -788,7 +857,7 @@ stations with their own long-term measurements; the rest are calculated from the
 <label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 <ul class="stations">{items}</ul>
-"""
+{town_list}"""
     path = f"tides/{slugify(state)}/"
     return path, page(f"{state} Tide Charts & Tide Times ({len(stations)} stations)",
                       f"High and low tide times, tide charts and tide tables for {len(stations)} places in {state}, from NOAA.",
@@ -1050,9 +1119,11 @@ self.addEventListener("fetch", (e) => {
 """
 
 
-def search_index(stations):
-    return {"base": BASE, "s": [[s["pretty"], s["state"], s["path"], round(s["lat"], 3), round(s["lng"], 3)]
-                                for s in stations]}
+def search_index(stations, town_pages=()):
+    """[label, state, path, lat, lng, extra words to match]. Towns come first so "Pacifica" finds its town page."""
+    return {"base": BASE, "s": [[f"Tides near {n}", st, p, round(la, 3), round(lo, 3), "town"] for n, st, p, la, lo in town_pages] +
+            [[s["pretty"], s["state"], s["path"], round(s["lat"], 3), round(s["lng"], 3), s["town"][0] if s.get("town") else ""]
+             for s in stations]}
 
 
 def assign_paths(stations):
@@ -1098,6 +1169,12 @@ def main():
     zones = load(ROOT / "collector" / "marine_zones.json", {})
     radios = load(DATA / "nwr.json", {})
     counties = load(ROOT / "collector" / "county_zones.json", {})
+    towns = load(ROOT / "collector" / "towns.json", {"stations": {}, "towns": {}})
+    for st_ in stations:
+        t = towns["stations"].get(st_["id"])
+        if t and t[0] in towns["towns"]:
+            tn = towns["towns"][t[0]]
+            st_["town"] = (tn[0], tn[1], t[1], town_path(tn[0], tn[1]))
 
     def cur_for(sid):
         link = cur["links"].get(sid)
@@ -1108,6 +1185,7 @@ def main():
 
     groups = {}
     popular = {}
+    built_data = {}
     built = 0
     for s in stations:
         try:
@@ -1128,11 +1206,31 @@ def main():
         write(s["path"] + "index.html", station_page(s, ctx))
         if s["id"] in POPULAR:
             popular[s["id"]] = (s, tz, events, today)
+        built_data[s["id"]] = (s, tz, events, today)
         groups.setdefault(s["state"], []).append(s)
         built += 1
 
+    # Town pages: every town with at least one built station within 15 miles.
+    town_pages, by_state_towns = [], {}
+    tlist = [(k, v) for k, v in towns["towns"].items()]
+    for k, tn in tlist:
+        pt = {"lat": tn[2], "lng": tn[3]}
+        near = sorted(((miles(pt, o), o) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                       for o in cells.get((int(tn[2]) + dy, int(tn[3]) + dx), []) if o["id"] in built_data),
+                      key=lambda x: x[0])
+        near = [(d, built_data[o["id"]]) for d, o in near if d <= 15][:8]
+        if not near:
+            continue
+        others = sorted((miles(pt, {"lat": o[2], "lng": o[3]}), o[0], town_path(o[0], o[1])) for kk, o in tlist
+                        if kk != k and abs(o[2] - tn[2]) < 0.5 and abs(o[3] - tn[3]) < 0.6)
+        others = [x for x in others if x[0] <= 25][:8]
+        path, html_ = town_page(tn, near, others)
+        write(path + "index.html", html_)
+        town_pages.append((tn[0], tn[1], path, tn[2], tn[3]))
+        by_state_towns.setdefault(tn[1], []).append((tn[0], path))
+
     for code, g in groups.items():
-        path, html_ = state_page(code, g)
+        path, html_ = state_page(code, g, by_state_towns.get(code, ()))
         write(path + "index.html", html_)
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
@@ -1165,10 +1263,10 @@ def main():
     write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
-    write("static/search.json", json.dumps(search_index(live), separators=(",", ":")))
+    write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
         urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/"] + \
-               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live]
+               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages]
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc></url>" for u in urls) + "</urlset>")
         write("robots.txt", f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
@@ -1178,6 +1276,7 @@ def main():
     host = urlparse(SITE_URL).hostname or ""
     if not host.endswith("github.io"):
         write("CNAME", host + "\n")
+    print(f"built {len(town_pages)} town pages")
     print(f"built {built} station pages, {len(groups)} states" + ("" if LAUNCHED else " (noindex)"))
 
 

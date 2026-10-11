@@ -13,8 +13,9 @@
       if (q.length < 2) { box.hidden = true; return; }
       const data = await load();
       const words = q.split(" ");
-      const hits = data.s.filter(([name, st]) => { const n = norm(name + " " + st); return words.every((w) => n.includes(w)); })
-        .sort((a, b) => norm(b[0]).startsWith(q) - norm(a[0]).startsWith(q)).slice(0, 10);
+      const bare = (n) => norm(n.replace(/^Tides near /, ""));
+      const hits = data.s.filter(([name, st, , , , alias]) => { const n = norm(`${name} ${st} ${alias || ""}`); return words.every((w) => n.includes(w)); })
+        .sort((a, b) => bare(b[0]).startsWith(q) - bare(a[0]).startsWith(q) || (b[5] === "town") - (a[5] === "town")).slice(0, 10);
       box.innerHTML = hits.length
         ? hits.map(([name, st, path]) => `<a href="${data.base}${path}${input.dataset.suffix || ""}">${name.replace(/</g, "&lt;")} <span>${st}</span></a>`).join("")
         : `<div class="none">No station matches. Try the nearest town or bay, or <a href="${base}states/">browse by state</a>.</div>`;
@@ -45,7 +46,7 @@
       say("Finding your location…");
       navigator.geolocation.getCurrentPosition(async ({ coords }) => {
         const data = await fetch(base + "static/search.json").then((r) => r.json());
-        const near = data.s.map((s) => [miles(coords.latitude, coords.longitude, s[3], s[4]), s])
+        const near = data.s.filter((s) => s[5] !== "town").map((s) => [miles(coords.latitude, coords.longitude, s[3], s[4]), s])
           .sort((a, b) => a[0] - b[0]).slice(0, 3);
         if (!near.length || near[0][0] > 150) { say("No tide stations within 150 miles of you. Try the search box."); return; }
         say("Nearest: " + near.map(([d, s]) => `<a href="${data.base}${s[2]}">${s[0].replace(/</g, "&lt;")}</a> (${Math.round(d)} mi)`).join(" · "));

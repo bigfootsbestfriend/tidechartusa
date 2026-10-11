@@ -362,3 +362,6 @@ nav.jump a[href="#emails"] { border-color: var(--sea-2); color: var(--sea); }
 .toast span { flex: 1; } .toast a { color: #7fd3e8; } .toast svg.ico { vertical-align: -0.2em; }
 .toast button { font: inherit; font-size: 1.3rem; line-height: 1; padding: 0 6px; border: 0; background: none; color: inherit; opacity: .7; cursor: pointer; }
 @media (max-width: 420px) { header.top nav a[href$="how-to-read-a-tide-chart/"] { display: none; } }
+ul.towns { list-style: none; padding: 0; columns: 3 180px; }
+ul.towns li { padding: 3px 0; }
+header.top nav a.nav-saved[hidden] { display: none; }
