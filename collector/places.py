@@ -1,14 +1,22 @@
 """Beaches, boat ramps, marinas and fishing piers near each tide station, from OpenStreetMap
 (© OpenStreetMap contributors, ODbL: credited on every page that shows them).
 
-One Overpass query per 1° square that has stations in it, politely spaced. Raw answers are kept in a cache
-directory so an interrupted run picks up where it stopped. Places change slowly, so the result is committed:
+Two ways to get the places. Places change slowly, so the result is committed either way.
 
-    python3 collector/places.py /tmp/overpass-cache     # writes collector/places.json
+From Geofabrik extracts (recommended: no rate limits). Download the coastal states' .osm.pbf files from
+download.geofabrik.de and install pyosmium (pip install osmium), then:
+
+    python3 collector/places.py --pbf ~/osm/*.osm.pbf  # writes collector/places.json
+
+From the public Overpass API: one query per 1° square that has stations in it, politely spaced. Raw answers are
+kept in a cache directory so an interrupted run picks up where it stopped. Overpass is often too busy for this:
+
+    python3 collector/places.py /tmp/overpass-cache
 """
 
 import json
 import math
+import re
 import sys
 import time
 import urllib.parse
@@ -52,6 +60,57 @@ def kind_of(tags):
     return None
 
 
+# Names that are working docks, wrecks or military, not somewhere a visitor can go.
+JUNK = re.compile(r"\bruins?\b|coast guard|uscg|patrol|navy|naval|military|firing|dolphin|heliport|maintenance|facility|spill|barge|vessel|cargo|container|terminal|industrial|refinery|^\d|^p-?\d|^(pier|berth|wharf|dock) \d+[a-z]?$|^.{1,2}$", re.I)
+
+
+def wanted(tags):
+    """Same selection as QUERY: named beaches, marinas and piers; every slipway and fishing spot. Leaves out
+    private or military beaches and piers, and junk names."""
+    k = kind_of(tags)
+    name = tags.get("name", "")
+    if not k or (name and JUNK.search(name)) or tags.get("military") or tags.get("landuse") == "military":
+        return None
+    if k in ("beach", "pier") and tags.get("access") in ("private", "no", "military"):
+        return None
+    if k in ("beach", "marina") or (k == "pier" and tags.get("man_made") == "pier" and tags.get("leisure") != "fishing"):
+        return k if tags.get("name") else None
+    return k
+
+
+def from_pbf(paths):
+    """Places from local OpenStreetMap extracts. Ways and multipolygons are placed at the average of their points."""
+    import osmium
+    places = {}
+    for path in paths:
+        fp = (osmium.FileProcessor(str(path))
+              .with_locations()
+              .with_areas(osmium.filter.KeyFilter("natural", "leisure", "man_made"))
+              .with_filter(osmium.filter.KeyFilter("natural", "leisure", "man_made")))
+        n0 = len(places)
+        for o in fp:
+            tags = dict(o.tags)
+            k = wanted(tags)
+            if not k:
+                continue
+            pts = []
+            if o.is_node():
+                pts = [o.location]
+            elif o.is_way():
+                pts = [n.location for n in o.nodes]
+            elif o.is_area() and not o.from_way():   # closed ways are handled as ways
+                pts = [n.location for ring in o.outer_rings() for n in ring]
+            else:
+                continue
+            pts = [q for q in pts if q.valid()]
+            if not pts:
+                continue
+            key = ("r", o.orig_id()) if o.is_area() else (o.type_str(), o.id)
+            places[key] = (k, tags.get("name", ""), sum(q.lat for q in pts) / len(pts), sum(q.lon for q in pts) / len(pts))
+        print(f"{Path(path).name}: {len(places) - n0} places", flush=True)
+    return places
+
+
 def fetch_cell(cache, la, lo):
     f = cache / f"{la}_{lo}.json"
     if f.exists():
@@ -73,9 +132,15 @@ def fetch_cell(cache, la, lo):
 
 
 def main():
-    cache = Path(sys.argv[1])
-    cache.mkdir(parents=True, exist_ok=True)
     stations = [s for s in get(STATIONS_URL)["stations"] if us_state(s) and s.get("lat") is not None]
+    if sys.argv[1] == "--pbf":
+        write(stations, from_pbf(sys.argv[2:]))
+    else:
+        write(stations, from_overpass(stations, Path(sys.argv[1])))
+
+
+def from_overpass(stations, cache):
+    cache.mkdir(parents=True, exist_ok=True)
     cells = sorted({(math.floor(s["lat"]), math.floor(s["lng"])) for s in stations})
     print(f"{len(stations)} stations in {len(cells)} cells")
     # The public Overpass server is often busy: make passes over the squares still missing, resting between them.
@@ -106,7 +171,10 @@ def main():
             time.sleep(4)
         if i % 25 == 0:
             print(f"{i + 1}/{len(cells)} cells, {len(places)} places", flush=True)
+    return places
 
+
+def write(stations, places):
     grid = {}
     for k, name, lat, lng in places.values():
         grid.setdefault((math.floor(lat * 4), math.floor(lng * 4)), []).append((k, name, lat, lng))
@@ -123,10 +191,13 @@ def main():
         found.sort()
         keep, seen = [], set()
         for d, k, name, lat, lng in found:
-            key = (k, name.lower()) if name else (k, round(lat, 3), round(lng, 3))
-            if key in seen or sum(1 for x in keep if x[0] == k) >= PER_KIND:
+            # One entry per name, and unnamed ones only if no same-kind place is within about 250 yards.
+            if (k, name.lower()) in seen or sum(1 for x in keep if x[0] == k) >= PER_KIND:
                 continue
-            seen.add(key)
+            if not name and any(x[0] == k and miles((lat, lng), (x[2], x[3])) < 0.15 for x in keep):
+                continue
+            if name:
+                seen.add((k, name.lower()))
             keep.append([k, name, round(lat, 5), round(lng, 5), round(d, 1)])
         if keep:
             out[s["id"]] = keep
