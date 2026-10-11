@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "13"
+CSS_VER = "14"
 
 
 def ga_tag():
@@ -184,6 +184,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 </main>
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>. Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
+{f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
 <p><a href="{BASE}about/">About</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
@@ -511,19 +512,20 @@ def radio_block(nwr, county=None):
 def signup_card(st, name, ctx):
     if not ALERTS_API:
         return ""
-    warn = ("Weather warnings for this water (small craft advisories, gales, coastal flooding)"
-            if ctx.get("zone") else "Weather warnings here (coastal flooding, high surf, storms)")
+    warn = ("Warnings for this water: small craft advisories, gales, coastal flooding"
+            if ctx.get("zone") else "Weather warnings here: coastal flooding, high surf, storms")
     return f"""
 <section class="card signup" id="emails">
-<h2>{ico("mail")}Get {esc(name)} tides by email</h2>
-<form method="post" action="{ALERTS_API}/subscribe">
+<h2>{ico("mail")}Free tide emails for {esc(name)}</h2>
+<p class="sub">Pick what's useful. No spam, no sharing your address, unsubscribe in one click.</p>
+<form method="post" action="{ALERTS_API}/subscribe" data-signup-form>
 <input type="hidden" name="station" value="{esc(st["id"])}"><input type="hidden" name="name" value="{esc(name)}">
 <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
-<label class="opt"><input type="checkbox" name="weekly" value="1" checked> Weekly tide times, every Thursday</label>
-<label class="opt"><input type="checkbox" name="warn" value="1" checked> {warn}</label>
-<label class="opt"><input type="checkbox" name="lows" value="1" checked> A heads-up when the weekend has minus tides</label>
-<div class="row"><input type="email" name="email" required placeholder="you@example.com" aria-label="Email address"><button type="submit">Sign me up</button></div>
-<p class="note">Free. We'll email you to confirm first, and every email has a one-click unsubscribe. <a href="{BASE}privacy/">Privacy</a></p>
+<label class="opt"><input type="checkbox" name="weekly" value="1" checked> <span><b>This week's tides</b>, every Thursday morning in time to plan the weekend</span></label>
+<label class="opt"><input type="checkbox" name="warn" value="1" checked> <span><b>{warn.split(":")[0]}</b>:{warn.split(":", 1)[1]}</span></label>
+<label class="opt"><input type="checkbox" name="lows" value="1" checked> <span><b>Minus-tide heads-up</b> when the weekend has great low tides for tide pools and clamming</span></label>
+<div class="row"><input type="email" name="email" required placeholder="you@example.com" aria-label="Email address" autocomplete="email"><button type="submit">Send me tides</button></div>
+<p class="note">We'll email you once to confirm. <a href="{BASE}privacy/">Privacy</a></p>
 </form>
 </section>"""
 
@@ -549,7 +551,7 @@ You can choose a weekly tide email, weather warnings for that stretch of water, 
     .then((r) => r.json()).catch(() => ({{ state: "error" }}));
   if (q.get("confirm")) {{
     say("Confirming…");
-    post("/confirm", q.get("confirm")).then((r) => say(r.state === "confirmed" ? "<b>You're subscribed.</b> Your first email arrives with the next update. Every email has an unsubscribe link."
+    post("/confirm", q.get("confirm")).then((r) => say(r.state === "confirmed" ? "<b>You're subscribed.</b> Your first email arrives with the next update. Every email has an unsubscribe link. Have another favorite spot? <a href=\"" + {base!r} + "\">Add it too</a>."
       : r.state === "expired" ? "That link has expired. Please sign up again from the station page." : "That link didn't work. Please sign up again from the station page."));
   }} else if (q.get("unsub")) {{
     say("Unsubscribing…");
@@ -659,7 +661,9 @@ def station_page(st, ctx):
         dl_html = ("<h2 id=\"lows\">Best daylight low tides in the next two weeks</h2><p>The lowest water that falls between "
                    "sunrise and sunset, for tide pooling and beachcombing.</p><ol class='dl'>"
                    + "".join(f"<li><b>{ft(v)}</b> at {clock(dt.datetime.fromtimestamp(t, tz))} on "
-                             f"{day_label(dt.datetime.fromtimestamp(t, tz).date())}</li>" for v, t in dl) + "</ol>")
+                             f"{day_label(dt.datetime.fromtimestamp(t, tz).date())}</li>" for v, t in dl) + "</ol>"
+                   + ('<p class="cta-line"><button type="button" class="linkish" data-signup="lows">Get an email before weekends with minus tides</button></p>'
+                      if ALERTS_API else ""))
 
     near = "".join(f'<li><a href="{BASE}{n["path"]}">{esc(n["pretty"])}</a> <span>{d:.0f} mi</span></li>'
                    for d, n in ctx["near"])
@@ -698,12 +702,11 @@ def station_page(st, ctx):
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>"""
     cur_html = currents_section(name, ctx.get("cur"), week, tz)
     fish_html = fishing_section(st, name, week, tz, f, sun_by_day)
-    jumps = [("Today", "chart", "today"), ("Plan a trip", "plan", "plan"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
+    jumps = [("Today", "chart", "today")] + ([("Email me", "mail", "emails")] if ALERTS_API else []) + [("Plan a trip", "plan", "plan"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
     jumps += [("Currents", "current", "currents")] if cur_html else []
     jumps += [("Fishing", "fish", "fishing")]
     jumps += [("Low tides", "low", "lows")] if dl_html else []
     jumps += [("Month", "cal", "month"), ("Radio", "radio", "radio")]
-    jumps += [("Email me", "mail", "emails")] if ALERTS_API else []
     body = f"""
 <article class="station">
 <h1>{esc(name)} tide chart</h1>
@@ -735,6 +738,8 @@ def station_page(st, ctx):
 <p class="note" id="plan-note"></p>
 </section>
 
+{signup_card(st, name, ctx)}
+
 {live_section(st, name, ctx)}
 
 <div class="tabs" data-tabs>
@@ -745,7 +750,6 @@ def station_page(st, ctx):
 {tab("Month", "cal", month_html, "month-tab")}
 </div>
 
-{signup_card(st, name, ctx)}
 
 <h2>About the tides at {esc(name)}</h2>
 {writeup(st, name, f, tz)}
@@ -762,7 +766,7 @@ def station_page(st, ctx):
 <script type="application/json" id="tide-data">{json.dumps(data, separators=(",", ":"))}</script>
 """
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"])]
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js"))
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js"))
 
 
 # ---------- other pages ----------
@@ -778,6 +782,7 @@ def state_page(code, stations):
 <p class="lede">Tide times and charts for {len(stations)} NOAA tide stations in {esc(state)}. {refs} are reference
 stations with their own long-term measurements; the rest are calculated from the nearest reference station.</p>
 <label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
+{f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 <ul class="stations">{items}</ul>
 """
     path = f"tides/{slugify(state)}/"
@@ -841,6 +846,18 @@ def spark(events, t0, t1, w=260, h=64):
             f'<path class="fill" d="{line} L{w},{h} L0,{h} Z"/><path class="line" d="{line}"/></svg>')
 
 
+def home_signup():
+    if not ALERTS_API:
+        return ""
+    return f"""<section class="signup-band" id="signup-band">
+<div class="sb-text"><h2>{ico("mail")}Your beach's tides, in your inbox</h2>
+<p>Every Thursday: the week's high and low tides for your spot, a heads-up when the weekend has great low tides, and
+warnings when the weather service flags your water. Free, and one click to stop.</p></div>
+<div class="sb-form"><div class="search"><input type="search" placeholder="Find your beach or harbor" aria-label="Find your spot to sign up" data-search data-suffix="#emails" autocomplete="off"><div class="results" data-results hidden></div></div>
+<p class="note">Pick your spot, then add your email on its page.</p></div>
+</section>"""
+
+
 def home(groups, total, popular):
     cards = []
     for st, tz, events, today in popular:
@@ -880,6 +897,8 @@ def home(groups, total, popular):
 
 <h2 class="sec">Popular spots{f' <span>· {day_label(day)}</span>' if day else ''}</h2>
 <div class="spots">{"".join(cards)}</div>
+
+{home_signup()}
 
 <h2 class="sec">On every station page</h2>
 <div class="feats">{feats}</div>
@@ -929,6 +948,7 @@ above the prediction, and offshore wind can drop it. For boating, check current 
 <p>NOAA measures water levels for years at <strong>reference stations</strong> and predicts their tides directly. Thousands of
 other spots are <strong>subordinate stations</strong>: their times and heights are worked out by adjusting the nearest reference
 station. They're good for planning but can be off by a few minutes or a few tenths of a foot.</p>
+__GUIDE_CTA__
 </article>
 """
 
@@ -1116,7 +1136,9 @@ def main():
     write("how-to-read-a-tide-chart/index.html", page(
         "How to Read a Tide Chart: Highs, Lows, MLLW and Minus Tides",
         "What the curve and numbers on a tide chart mean, why the two daily highs differ, and spring vs. neap tides.",
-        "how-to-read-a-tide-chart/", GUIDE, crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
+        "how-to-read-a-tide-chart/", GUIDE.replace("__GUIDE_CTA__", (
+            f'<p class="cta-box">{ico("mail")} <span>Want this for your own beach? <a href="{BASE}#signup-band">Get its tides free by email '
+            f'every Thursday</a>, with a heads-up before the best low tides.</span></p>') if ALERTS_API else ""), crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
     write("about/index.html", page("About Tide Chart USA", "Where our tide predictions come from.", "about/", ABOUT))
     if ALERTS_API:
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",

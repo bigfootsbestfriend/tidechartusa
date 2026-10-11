@@ -43,7 +43,7 @@
       list = on ? list.filter((s) => s.path !== path) : [{ path, name, at: Date.now() }, ...list].slice(0, 30);
       setSaved(list);
       paintSave();
-      if (!on) toast("Saved. This page and a month of tides now work without a connection. Find it on the home page.");
+      if (!on) toast("Saved for offline. Want next week's tides too? Tap Email me at the top and we'll send them every Thursday.");
     });
     row.querySelector("[data-pocket]").addEventListener("click", pocket);
   }

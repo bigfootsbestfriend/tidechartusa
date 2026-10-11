@@ -147,7 +147,9 @@
     note.innerHTML = (showAll ? "Every day in date order. " : `The best days in the next ${span}. `) +
       `<button type="button" class="linkish" data-all>${showAll ? "Show the best 5" : "Show every day"}</button>` +
       (act === "kayak" && !data.cur ? " No current station nearby, so this uses the size of the tide." : "") +
-      " Always check the forecast and local conditions before you go.";
+      " Always check the forecast and local conditions before you go." +
+      (document.getElementById("emails") ? `<br><button type="button" class="linkish cta" data-signup="${act === "pool" ? "lows" : "weekly"}">` +
+        `${act === "pool" ? "Email me before weekends with great low tides" : "Email me this spot's tides every Thursday"}</button>` : "");
   };
   card.addEventListener("click", (e) => {
     const a = e.target.closest("[data-act]");

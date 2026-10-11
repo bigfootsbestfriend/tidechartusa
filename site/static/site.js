@@ -16,7 +16,7 @@
       const hits = data.s.filter(([name, st]) => { const n = norm(name + " " + st); return words.every((w) => n.includes(w)); })
         .sort((a, b) => norm(b[0]).startsWith(q) - norm(a[0]).startsWith(q)).slice(0, 10);
       box.innerHTML = hits.length
-        ? hits.map(([name, st, path]) => `<a href="${data.base}${path}">${name.replace(/</g, "&lt;")} <span>${st}</span></a>`).join("")
+        ? hits.map(([name, st, path]) => `<a href="${data.base}${path}${input.dataset.suffix || ""}">${name.replace(/</g, "&lt;")} <span>${st}</span></a>`).join("")
         : `<div class="none">No station matches. Try the nearest town or bay, or <a href="${base}states/">browse by state</a>.</div>`;
       box.hidden = false;
     });

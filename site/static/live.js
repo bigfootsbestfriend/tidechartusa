@@ -106,7 +106,7 @@
       const e = p.ends || p.expires;
       return e ? ` until ${new Date(e).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "";
     };
-    const sign = document.getElementById("emails") ? ` <a href="#emails">Get alerts for this spot by email</a>` : "";
+    const sign = document.getElementById("emails") ? ` <button type="button" class="linkish" data-signup="warn">Email me when warnings are issued here</button>` : "";
     box.innerHTML = alerts.length
       ? alerts.map((p) => `<details class="al ${kind(p.event)}"><summary>${icon("warn")}<span><b>${esc(p.event)}</b>${esc(until(p))}` +
           `${p.parameters && p.parameters.NWSheadline ? `<small>${esc(sentence(p.parameters.NWSheadline[0]))}</small>` : ""}</span></summary>` +
