@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "30"
+CSS_VER = "31"
 
 
 def ga_tag():
@@ -178,7 +178,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="sb-logo-r"><rect width="64" height="64" rx="15"/></clipPath><mask id="sb-logo-bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#sb-logo-r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#sb-logo-bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
-<nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
+<nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}fishing/">Fishing</a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">
 {body}
@@ -888,6 +888,7 @@ def station_page(st, ctx):
     data["fish"] = fish
     bite = bite_days(st, week, tz, events, f, sun_by_day)
     data["bite"] = {d.isoformat(): [sc, hrs, [[int(a), int(z), p] for a, z, p in w]] for d, (sc, hrs, w) in bite.items()}
+    st["_bite"] = bite
     if ctx.get("cur"):
         meta, cdist, cev = ctx["cur"]
         data["cur"] = {"name": tidy(meta["name"]), "mi": cdist, "ev": [
@@ -1282,6 +1283,45 @@ stations with their own long-term measurements; the rest are calculated from the
                       path, body, crumbs=[("Home", ""), (state, path)], scripts=("site.js",))
 
 
+def fishing_page(groups):
+    rows = []
+    for label, codes in REGIONS:
+        blocks = []
+        for c in codes.split():
+            cand = []
+            for st in groups.get(c, []):
+                tz = zone_for(st)
+                today = dt.datetime.now(tz).date()
+                b = (st.get("_bite") or {}).get(today)
+                if b:
+                    cand.append((b[0], st, tz, today))
+            if not cand:
+                continue
+            cand.sort(key=lambda x: -x[0])
+            name = STATES.get(c, c)
+            blocks.append(f'<div class="fish-state"><h3><a href="{BASE}tides/{slugify(name)}/">{esc(name)}</a></h3><ol>' + "".join(
+                f'<li><a href="{BASE}{st["path"]}#bite">{esc(st["pretty"])}</a> {bite_line(st, tz, today)}</li>'
+                for _, st, tz, today in cand[:5]) + "</ol></div>")
+        if blocks:
+            rows.append(f'<h2>{esc(label)}</h2><div class="fish-states">{"".join(blocks)}</div>')
+    body = f"""
+<h1>Fishing forecast: best times to fish today</h1>
+<p class="lede">Every tide station on Shorebite has an hour-by-hour fishing forecast. Here are today's top-rated spots in each
+state. Open any of them for the best times, live wind and pressure, rain radar and the fish recorded in those waters.</p>
+<div class="search"><input type="search" placeholder="Find your beach, pier or harbor" aria-label="Search fishing spots" data-search data-suffix="#bite" autocomplete="off"><div class="results" data-results hidden></div></div>
+<h2>How the bite score works</h2>
+<p>The score (0 to 100) adds up what anglers watch most. <b>Moving water</b>: a tide running harder than usual for that spot scores
+higher, because moving water stirs up bait. <b>Solunar periods</b>: about two hours around the moon passing overhead or underfoot,
+and an hour around moonrise and moonset. <b>Low light</b>: the hour around sunrise and sunset. <b>Moon phase</b>: days near the new
+and full moon bring bigger tides. On the spot's page we also fold in the National Weather Service wind forecast and the pressure
+trend: strong wind lowers the score, and slowly falling pressure before a front raises it.</p>
+<p class="note">A planning aid, not a guarantee. Always check your state's fishing rules, seasons and limits.</p>
+{"".join(rows)}"""
+    return page("Fishing Forecast Today: Best Times to Fish at Every US Beach and Harbor",
+                "Hour-by-hour fishing forecasts and today's best-rated fishing spots in every coastal state, from tides, solunar periods, moon and live weather.",
+                "fishing/", body, crumbs=[("Home", ""), ("Fishing", "fishing/")], scripts=("units.js", "site.js"))
+
+
 def states_index(groups):
     items = "".join(f'<li><a href="{BASE}tides/{slugify(STATES.get(c, c))}/">{esc(STATES.get(c, c))} <span>{len(g)}</span></a></li>'
                     for c, g in sorted(groups.items(), key=lambda kv: STATES.get(kv[0], kv[0])))
@@ -1326,7 +1366,8 @@ def ico(name, cls="ico"):
     return f'<svg class="{cls}" viewBox="0 0 24 24" aria-hidden="true">{ICON[name]}</svg>'
 FEATURES = [("chart", "Today's tide chart", "A live curve with a now marker, the next high or low, and whether the water is rising or falling."),
             ("current", "Tidal currents", "Slack water and peak flood and ebb in knots, from the nearest NOAA current station."),
-            ("fish", "Best fishing times", "Daily major and minor solunar periods with a simple rating for each day."),
+            ("fish", "Hour-by-hour fishing forecast", "A bite score for every hour, the best times to fish, live wind and pressure, and a rain radar."),
+            ("pin", "Fish in these waters", "The fish, sharks and rays recorded around each spot, and what's in season this month."),
             ("forecast", "Marine forecast", "The National Weather Service forecast and any small craft advisories for that stretch of water."),
             ("temp", "Live water conditions", "Water temperature and the measured water level against the prediction, where NOAA has sensors."),
             ("cal", "Print or add to calendar", "A month tide table you can print, or every high and low in your phone's calendar.")]
@@ -1357,6 +1398,46 @@ warnings when the weather service flags your water. Free, and one click to stop.
 </section>"""
 
 
+def bite_line(st, tz, today):
+    b = (st.get("_bite") or {}).get(today)
+    if not b:
+        return ""
+    best = span(dt.datetime.fromtimestamp(b[2][0][0], tz), dt.datetime.fromtimestamp(b[2][0][1], tz)) if b[2] else ""
+    return (f'<span class="spot-bite"><b class="b{bite_band(b[0])}">{b[0]}</b> {bite_label(b[0])} fishing'
+            f'{f" · best {best}" if best else ""}</span>')
+
+
+def best_fishing(groups, per_region=2):
+    """Top-scoring spots for today in each region (named towns first, so the list is recognisable)."""
+    out = []
+    for label, codes in REGIONS:
+        cand = []
+        for c in codes.split():
+            for st in groups.get(c, []):
+                tz = zone_for(st)
+                today = dt.datetime.now(tz).date()
+                b = (st.get("_bite") or {}).get(today)
+                # Skip spots named only by a distance along a river ("8 miles above mouth"): not recognisable on a home page.
+                if b and not re.search(r"^\d|\bmiles?\b|\babove\b|\bbelow\b", st["pretty"], re.I):
+                    cand.append((bool(st.get("town")) + (st["type"] == "R"), b[0], st, tz, today))
+        cand.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        best_by_state = {}
+        for town, sc, st, tz, today in cand:  # one spot per state first, so a region shows different states
+            best_by_state.setdefault(st["state"], (sc, st, tz, today))
+        picks = sorted(best_by_state.values(), key=lambda x: -x[0])[:per_region]
+        if len(picks) < per_region:
+            used = {p[1]["id"] for p in picks}
+            picks += [(sc, st, tz, today) for _, sc, st, tz, today in cand if st["id"] not in used][:per_region - len(picks)]
+        if picks:
+            out.append((label, picks))
+    return out
+
+
+def bite_card_small(st, tz, today):
+    return (f'<a class="spot fish-spot" href="{BASE}{st["path"]}#bite"><span class="spot-name">{esc(st["pretty"])}'
+            f'<small>{esc(STATES.get(st["state"], st["state"]))}</small></span>{bite_line(st, tz, today)}</a>')
+
+
 def home(groups, total, popular):
     cards = []
     for st, tz, events, today in popular:
@@ -1366,7 +1447,7 @@ def home(groups, total, popular):
                         for w, v, k in evs)
         cards.append(f'<a class="spot" href="{BASE}{st["path"]}"><span class="spot-name">{esc(st["pretty"])}'
                      f'<small>{esc(STATES.get(st["state"], st["state"]))}</small></span>{spark(events, a, a + 86400)}'
-                     f'<ul>{times}</ul></a>')
+                     f'<ul>{times}</ul>{bite_line(st, tz, today)}</a>')
     feats = "".join(f'<div class="feat"><svg viewBox="0 0 24 24" aria-hidden="true">{ICON[i]}</svg>'
                     f'<h3>{t}</h3><p>{d}</p></div>' for i, t, d in FEATURES)
     regions = []
@@ -1384,10 +1465,11 @@ def home(groups, total, popular):
 <path class="w2" d="M0 80 C150 50 300 110 450 80 S750 50 900 80 1050 110 1200 80 1350 50 1500 80 V120 H0Z"/>
 </svg>
 <div class="hero-in">
-<h1>Tide times for every beach, bay and harbor in the US</h1>
-<p>{total:,} NOAA stations with today's tide chart, currents, an hourly fishing forecast and the marine forecast. Updated every night.</p>
+<h1>Tides and fishing forecasts for every beach, bay and harbor in the US</h1>
+<p>{total:,} spots with today's tide chart, an hour-by-hour fishing forecast with the best times to fish, the fish in those waters, currents and the marine forecast. Updated every night.</p>
 <div class="search big"><input type="search" placeholder="Search a beach, harbor or town" aria-label="Search tide stations" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
-<button type="button" class="locate" data-locate><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>Find tides near me</button>
+<div class="locates"><button type="button" class="locate" data-locate><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>Find tides near me</button>
+<button type="button" class="locate" data-locate data-suffix="#bite"><svg viewBox="0 0 24 24" aria-hidden="true">{ICON["fish"]}</svg>Fishing near me</button></div>
 <p class="locate-msg" data-locate-msg hidden></p>
 </div>
 </section>
@@ -1396,6 +1478,14 @@ def home(groups, total, popular):
 
 <h2 class="sec">Popular spots{f' <span>· {day_label(day)}</span>' if day else ''}</h2>
 <div class="spots">{"".join(cards)}</div>
+
+<section class="fish-band">
+<div class="fish-band-head"><h2 class="sec">{ico("fish")}Best fishing today</h2>
+<a href="{BASE}fishing/">All states and how the bite score works →</a></div>
+<p>Every spot gets an hour-by-hour bite score from the tide flow, solunar periods, dawn and dusk, the moon, and live wind and pressure.
+These are today's top-rated spots in each part of the country.</p>
+<div class="spots">{"".join(bite_card_small(st, tz, today) for _, st, tz, today in [x for _, picks in best_fishing(groups, 3) for x in picks][:12])}</div>
+</section>
 
 {home_signup()}
 
@@ -1713,6 +1803,7 @@ def main():
     write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",),
                                      extra_head='<meta name="robots" content="noindex">'))
     write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))
+    write("fishing/index.html", fishing_page(groups))
     write("states/index.html", page("Tide Charts by State", "Pick a state to see every NOAA tide station there.",
                                     "states/", f"<h1>Tide charts by state</h1><ul class='states'>{states_index(groups)}</ul>",
                                     crumbs=[("Home", ""), ("States", "states/")]))
@@ -1732,7 +1823,7 @@ def main():
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
-        urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
+        urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
                [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc><lastmod>{built_at.date().isoformat()}</lastmod></url>" for u in urls)

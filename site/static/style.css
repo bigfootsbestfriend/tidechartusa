@@ -515,3 +515,22 @@ details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border
 .radar-bar { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: .9rem; color: var(--muted); }
 .radar-bar button { width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
 @media (max-width: 520px) { .radar-map { height: 300px; } }
+
+/* Fishing on the home and /fishing/ pages */
+.locates { display: flex; flex-wrap: wrap; gap: 8px; }
+.locates .locate svg { fill: none; }
+.spot-bite { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: .88rem; color: var(--muted); }
+.spot-bite b { display: inline-block; min-width: 2.2em; text-align: center; padding: 1px 6px; border-radius: 999px; color: #fff; background: var(--b1); margin-right: 4px; }
+.spot-bite b.b2 { background: var(--b2); color: #2b1d00; } .spot-bite b.b3 { background: var(--b3); } .spot-bite b.b4 { background: var(--b4); }
+.fish-band { margin: 28px 0; }
+.fish-band-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.fish-band-head a { font-size: .95rem; }
+.fish-band > p { color: var(--muted); max-width: 70ch; }
+.fish-spot .spot-bite { border-top: 0; padding-top: 0; }
+.fish-states { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.fish-state { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.fish-state h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.fish-state ol { margin: 0; padding-left: 1.2em; }
+.fish-state li { margin: 6px 0; }
+.fish-state .spot-bite { border-top: 0; margin-top: 2px; padding-top: 0; }
+h2.sec > svg.ico { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-right: 6px; color: var(--sea); }

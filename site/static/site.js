@@ -49,7 +49,7 @@
         const near = data.s.filter((s) => s[5] !== "town").map((s) => [miles(coords.latitude, coords.longitude, s[3], s[4]), s])
           .sort((a, b) => a[0] - b[0]).slice(0, 3);
         if (!near.length || near[0][0] > 150) { say("No tide stations within 150 miles of you. Try the search box."); return; }
-        say("Nearest: " + near.map(([d, s]) => `<a href="${data.base}${s[2]}">${s[0].replace(/</g, "&lt;")}</a> (${Math.round(d)} mi)`).join(" · "));
+        say("Nearest: " + near.map(([d, s]) => `<a href="${data.base}${s[2]}${btn.dataset.suffix || ""}">${s[0].replace(/</g, "&lt;")}</a> (${Math.round(d)} mi)`).join(" · "));
       }, () => say("Location is blocked or unavailable. Try the search box instead."), { timeout: 10000, maximumAge: 600000 });
     });
   });
