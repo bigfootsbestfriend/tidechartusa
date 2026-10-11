@@ -33,6 +33,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 # Flip to True when Mike approves launch: drops noindex and publishes the sitemap. (Launched 2026-10-10.)
 # IndexNow key (public by design: search engines fetch /<key>.txt to confirm submissions come from us).
 INDEXNOW_KEY = "ab023efee00f9ab2707e5dbe5e3881c7"
+BING_AUTH = "166ED942B039ECB32E7BF3985158FC36"
 LAUNCHED = True
 SITE_URL = os.environ.get("SITE_URL", "https://bigfootsbestfriend.github.io/tidechartusa").rstrip("/")
 BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
@@ -2007,6 +2008,8 @@ def main():
         kt_pages.insert(0, "king-tides/")
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
+    # Bing Webmaster Tools site ownership (the account's code, public by design).
+    write("BingSiteAuth.xml", f'<?xml version="1.0"?>\n<users>\n\t<user>{BING_AUTH}</user>\n</users>\n')
     write("manifest.webmanifest", json.dumps({
         "name": SITE_NAME, "short_name": "Shorebite", "start_url": BASE, "scope": BASE, "display": "standalone",
         "background_color": "#f4f8fa", "theme_color": "#0b5c7a",
