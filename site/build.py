@@ -29,8 +29,10 @@ DATA = ROOT / "data"
 OUT = ROOT / "_site"
 STATIC = Path(__file__).resolve().parent / "static"
 
-# Flip to True when Mike approves launch: drops noindex and publishes the sitemap.
-LAUNCHED = False
+# Flip to True when Mike approves launch: drops noindex and publishes the sitemap. (Launched 2026-10-10.)
+# IndexNow key (public by design: search engines fetch /<key>.txt to confirm submissions come from us).
+INDEXNOW_KEY = "ab023efee00f9ab2707e5dbe5e3881c7"
+LAUNCHED = True
 SITE_URL = os.environ.get("SITE_URL", "https://bigfootsbestfriend.github.io/tidechartusa").rstrip("/")
 BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
 SITE_NAME = "Tide Chart USA"
@@ -1097,6 +1099,7 @@ def main():
         path, html_ = state_page(code, g)
         write(path + "index.html", html_)
     live = [s for g in groups.values() for s in g]
+    write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
     write("manifest.webmanifest", json.dumps({
         "name": SITE_NAME, "short_name": "Tides", "start_url": BASE, "scope": BASE, "display": "standalone",
         "background_color": "#f4f8fa", "theme_color": "#0b5c7a",
@@ -1104,7 +1107,8 @@ def main():
         "icons": [{"src": f"{BASE}static/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any maskable"}
                   for n in (192, 512)]}, indent=1))
     write("sw.js", SW.replace("__BASE__", BASE).replace("__VER__", CSS_VER + "-" + built_at.strftime("%Y%m%d")))
-    write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",)))
+    write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",),
+                                     extra_head='<meta name="robots" content="noindex">'))
     write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))
     write("states/index.html", page("Tide Charts by State", "Pick a state to see every NOAA tide station there.",
                                     "states/", f"<h1>Tide charts by state</h1><ul class='states'>{states_index(groups)}</ul>",
@@ -1116,7 +1120,8 @@ def main():
     write("about/index.html", page("About Tide Chart USA", "Where our tide predictions come from.", "about/", ABOUT))
     if ALERTS_API:
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
-                                        ALERTS_PAGE.format(base=BASE, api=ALERTS_API)))
+                                        ALERTS_PAGE.format(base=BASE, api=ALERTS_API),
+                                        extra_head='<meta name="robots" content="noindex">'))
     write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
