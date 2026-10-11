@@ -32,4 +32,24 @@
       items.forEach((li) => { li.hidden = q && !norm(li.dataset.n).includes(q); });
     });
   });
+
+  // "Find tides near me": nearest stations to the browser's location, from the same index.
+  document.querySelectorAll("[data-locate]").forEach((btn) => {
+    const msg = document.querySelector("[data-locate-msg]");
+    const say = (html) => { msg.innerHTML = html; msg.hidden = false; };
+    const rad = Math.PI / 180;
+    const miles = (a, b, c, d) => 3958.8 * 2 * Math.asin(Math.sqrt(Math.sin((c - a) * rad / 2) ** 2 +
+      Math.cos(a * rad) * Math.cos(c * rad) * Math.sin((d - b) * rad / 2) ** 2));
+    btn.addEventListener("click", () => {
+      if (!navigator.geolocation) { say("Your browser can't share a location. Try the search box instead."); return; }
+      say("Finding your location…");
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        const data = await fetch(base + "static/search.json").then((r) => r.json());
+        const near = data.s.map((s) => [miles(coords.latitude, coords.longitude, s[3], s[4]), s])
+          .sort((a, b) => a[0] - b[0]).slice(0, 3);
+        if (!near.length || near[0][0] > 150) { say("No tide stations within 150 miles of you. Try the search box."); return; }
+        say("Nearest: " + near.map(([d, s]) => `<a href="${data.base}${s[2]}">${s[0].replace(/</g, "&lt;")}</a> (${Math.round(d)} mi)`).join(" · "));
+      }, () => say("Location is blocked or unavailable. Try the search box instead."), { timeout: 10000, maximumAge: 600000 });
+    });
+  });
 })();

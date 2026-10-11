@@ -119,7 +119,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "4"
+CSS_VER = "5"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -619,28 +619,86 @@ def states_index(groups):
     return items
 
 
-def home(groups, total):
+POPULAR = ["9414290", "8518750", "9447130", "8723214", "8661070", "1612340"]
+REGIONS = [("Northeast", "ME NH MA RI CT NY NJ PA DE MD DC VA"), ("Southeast & Gulf", "NC SC GA FL AL MS LA TX"),
+           ("West Coast", "CA OR WA"), ("Alaska & Hawaii", "AK HI"), ("Islands", "PR VI GU AS MP FM UM")]
+ICON = {
+    "chart": '<path d="M3 17c3 0 3-6 6-6s3 6 6 6 3-6 6-6"/><path d="M3 21h18"/>',
+    "current": '<path d="M3 8h13l-3-3M3 8l0 0"/><path d="M21 16H8l3 3"/>',
+    "fish": '<path d="M3 12c3-4 7-5 11-3l5-3v12l-5-3c-4 2-8 1-11-3z"/><circle cx="8" cy="11" r="1"/>',
+    "forecast": '<path d="M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.5 1.5A3.5 3.5 0 0 0 7 18z"/>',
+    "temp": '<path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 14v3"/>',
+    "cal": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+}
+FEATURES = [("chart", "Today's tide chart", "A live curve with a now marker, the next high or low, and whether the water is rising or falling."),
+            ("current", "Tidal currents", "Slack water and peak flood and ebb in knots, from the nearest NOAA current station."),
+            ("fish", "Best fishing times", "Daily major and minor solunar periods with a simple rating for each day."),
+            ("forecast", "Marine forecast", "The National Weather Service forecast and any small craft advisories for that stretch of water."),
+            ("temp", "Live water conditions", "Water temperature and the measured water level against the prediction, where NOAA has sensors."),
+            ("cal", "Print or add to calendar", "A month tide table you can print, or every high and low in your phone's calendar.")]
+
+
+def spark(events, t0, t1, w=260, h=64):
+    pts = curve_points(events, t0, t1, step=900)
+    if not pts:
+        return ""
+    vs = [v for _, v in pts]
+    lo, hi = min(vs), max(vs)
+    span = (hi - lo) or 1
+    xy = [((t - t0) / (t1 - t0) * w, h - 6 - (v - lo) / span * (h - 12)) for t, v in pts]
+    line = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    return (f'<svg class="spark" viewBox="0 0 {w} {h}" preserveAspectRatio="none" aria-hidden="true">'
+            f'<path class="fill" d="{line} L{w},{h} L0,{h} Z"/><path class="line" d="{line}"/></svg>')
+
+
+def home(groups, total, popular):
+    cards = []
+    for st, tz, events, today in popular:
+        a = dt.datetime.combine(today, dt.time(0), tz).timestamp()
+        evs = [(dt.datetime.fromtimestamp(t, tz), v, k) for t, v, k in events if a <= t < a + 86400]
+        times = "".join(f'<li class="{k}"><b title="{"High" if k == "H" else "Low"}">{"▲" if k == "H" else "▼"}</b> {clock(w)} <i>{ft(v)}</i></li>'
+                        for w, v, k in evs)
+        cards.append(f'<a class="spot" href="{BASE}{st["path"]}"><span class="spot-name">{esc(st["pretty"])}'
+                     f'<small>{esc(STATES.get(st["state"], st["state"]))}</small></span>{spark(events, a, a + 86400)}'
+                     f'<ul>{times}</ul></a>')
+    feats = "".join(f'<div class="feat"><svg viewBox="0 0 24 24" aria-hidden="true">{ICON[i]}</svg>'
+                    f'<h3>{t}</h3><p>{d}</p></div>' for i, t, d in FEATURES)
+    regions = []
+    for label, codes in REGIONS:
+        items = [(STATES.get(c, c), c) for c in codes.split() if c in groups]
+        if items:
+            regions.append(f'<div class="region"><h3>{label}</h3><ul>' + "".join(
+                f'<li><a href="{BASE}tides/{slugify(n)}/">{esc(n)} <span>{len(groups[c])}</span></a></li>'
+                for n, c in items) + "</ul></div>")
+    day = popular[0][3] if popular else None
     body = f"""
-<section class="hero">
-<h1>Tide charts and tide times for the whole US coast</h1>
-<p class="lede">High and low tides for {total:,} NOAA stations, with a chart for today, the week ahead and a full month table. Updated every night.</p>
-<div class="search"><input type="search" placeholder="Search a beach, harbor or town" aria-label="Search tide stations" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
+<section class="hero-sea">
+<svg class="waves" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+<path class="w1" d="M0 60 C150 20 300 100 450 60 S750 20 900 60 1050 100 1200 60 1350 20 1500 60 V120 H0Z"/>
+<path class="w2" d="M0 80 C150 50 300 110 450 80 S750 50 900 80 1050 110 1200 80 1350 50 1500 80 V120 H0Z"/>
+</svg>
+<div class="hero-in">
+<h1>Tide times for every beach, bay and harbor in the US</h1>
+<p>{total:,} NOAA stations with today's tide chart, currents, fishing times and the marine forecast. Updated every night.</p>
+<div class="search big"><input type="search" placeholder="Search a beach, harbor or town" aria-label="Search tide stations" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
+<button type="button" class="locate" data-locate><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>Find tides near me</button>
+<p class="locate-msg" data-locate-msg hidden></p>
+</div>
 </section>
-<h2>Browse by state</h2>
-<ul class="states">{states_index(groups)}</ul>
-<section class="explain">
-<h2>What you get for each place</h2>
-<ul>
-<li><strong>Today's tide chart</strong>, with the next high or low and whether the water is rising or falling right now.</li>
-<li><strong>A week of tide times</strong> next to sunrise, sunset and the moon phase.</li>
-<li><strong>A month tide table</strong> you can print or screenshot.</li>
-<li><strong>The best daylight low tides</strong> for tide pooling and beachcombing.</li>
-</ul>
-<p>New to tide charts? Read <a href="{BASE}how-to-read-a-tide-chart/">how to read a tide chart</a>.</p>
-</section>
+
+<h2 class="sec">Popular spots{f' <span>· {day_label(day)}</span>' if day else ''}</h2>
+<div class="spots">{"".join(cards)}</div>
+
+<h2 class="sec">On every station page</h2>
+<div class="feats">{feats}</div>
+
+<h2 class="sec">Browse by state</h2>
+<div class="regions">{"".join(regions)}</div>
+
+<a class="guide-cta" href="{BASE}how-to-read-a-tide-chart/"><b>New to tide charts?</b> Learn what MLLW, minus tides and spring tides mean in two minutes →</a>
 """
     return page("Tide Charts & Tide Times for Every US Beach and Harbor",
-                f"Free tide charts, high and low tide times and monthly tide tables for {total:,} NOAA stations across the US.",
+                f"Free tide charts, high and low tide times, currents, fishing times and marine forecasts for {total:,} NOAA stations across the US.",
                 "", body, scripts=("site.js",))
 
 
@@ -703,7 +761,8 @@ PRIVACY = """
 
 
 def search_index(stations):
-    return {"base": BASE, "s": [[s["pretty"], s["state"], s["path"]] for s in stations]}
+    return {"base": BASE, "s": [[s["pretty"], s["state"], s["path"], round(s["lat"], 3), round(s["lng"], 3)]
+                                for s in stations]}
 
 
 def main():
@@ -751,6 +810,7 @@ def main():
         return (cur["stations"][link[0]], link[1], events) if events else None
 
     groups = {}
+    popular = {}
     built = 0
     for s in stations:
         try:
@@ -768,6 +828,8 @@ def main():
                "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
                "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None}
         write(s["path"] + "index.html", station_page(s, ctx))
+        if s["id"] in POPULAR:
+            popular[s["id"]] = (s, tz, events, today)
         groups.setdefault(s["state"], []).append(s)
         built += 1
 
@@ -775,7 +837,7 @@ def main():
         path, html_ = state_page(code, g)
         write(path + "index.html", html_)
     live = [s for g in groups.values() for s in g]
-    write("index.html", home(groups, len(live)))
+    write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))
     write("states/index.html", page("Tide Charts by State", "Pick a state to see every NOAA tide station there.",
                                     "states/", f"<h1>Tide charts by state</h1><ul class='states'>{states_index(groups)}</ul>",
                                     crumbs=[("Home", ""), ("States", "states/")]))
