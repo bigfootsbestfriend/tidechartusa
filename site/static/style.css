@@ -444,3 +444,54 @@ details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border
 .po-acts button[aria-pressed="true"] svg.ico { color: var(--card); }
 .pocket-opts .opt { display: flex; gap: 8px; margin-top: 6px; font-size: .92rem; }
 .po-go { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; }
+
+/* Fishing forecast card (static/bite.js) */
+:root { --b1: #9aaab2; --b2: #e0a73a; --b3: #2f9e6e; --b4: #0f7a4f; }
+@media (prefers-color-scheme: dark) { :root { --b1: #5d6f78; --b2: #e2b04f; --b3: #45b884; --b4: #63d39c; } }
+.card.bite { margin-top: 16px; }
+.bite-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.bite-head h2 { margin: 0; }
+.bite-head .sub { margin: 0; }
+.bite-days { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+.bite-days button { flex: 0 0 auto; min-width: 58px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px;
+  font: inherit; font-size: .85rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.bite-days button b { font-size: 1.05rem; }
+.bite-days button[aria-pressed="true"] { border-color: var(--sea); box-shadow: inset 0 0 0 1px var(--sea); background: var(--foam); }
+.bite-days b.b1, .bite-hour b.b1 { color: var(--b1); } .bite-days b.b2 { color: var(--b2); } .bite-days b.b3 { color: var(--b3); } .bite-days b.b4 { color: var(--b4); }
+.bite-main { display: flex; align-items: center; gap: 18px; margin: 12px 0 8px; }
+.bite-ring { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 8px solid var(--b1); background: var(--card); }
+.bite-ring b { font-size: 2rem; line-height: 1; }
+.bite-ring span { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.bite-ring.b2 { border-color: var(--b2); } .bite-ring.b3 { border-color: var(--b3); } .bite-ring.b4 { border-color: var(--b4); }
+.bite-best p { margin: 0; }
+.bite-best .lbl { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.bite-best .win { font-size: 1.25rem; font-weight: 700; line-height: 1.3; }
+.bite-best .why { color: var(--muted); font-size: .9rem; margin-top: 2px; }
+.bite-bars { display: flex; align-items: flex-end; gap: 2px; height: 84px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.bite-bars i { flex: 1 1 0; border-radius: 3px 3px 0 0; background: var(--b1); cursor: pointer; min-width: 0; }
+.bite-bars i.b2 { background: var(--b2); } .bite-bars i.b3 { background: var(--b3); } .bite-bars i.b4 { background: var(--b4); }
+.bite-bars i.past { opacity: .35; }
+.bite-bars i.now { outline: 2px solid var(--now); outline-offset: 1px; }
+.bite-bars i.sel { box-shadow: 0 0 0 2px var(--ink); }
+.bite-axis { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); }
+.bite-hour { margin: 8px 0 4px; font-size: .95rem; min-height: 1.5em; }
+.bite-factors { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.bite-factors li { padding: 8px 10px; border-radius: 10px; background: var(--bg); border-left: 4px solid var(--line); font-size: .9rem; }
+.bite-factors li.good { border-left-color: var(--b3); } .bite-factors li.bad { border-left-color: var(--b2); }
+.bite-factors b { display: block; }
+.bite-factors span { color: var(--muted); }
+.bite-radar { margin: 10px 0; }
+.bite-radar summary { cursor: pointer; font-weight: 600; }
+.radar-box img { width: 100%; height: auto; border-radius: 10px; margin-top: 8px; }
+.card.bite h3 { margin: 16px 0 6px; font-size: 1.05rem; }
+.biting { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.biting li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.biting li small { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--foam); color: var(--sea); font-weight: 600; }
+.biting li.soon small { background: var(--bg); color: var(--muted); }
+.biting li span { display: block; color: var(--muted); font-size: .9rem; }
+.rate.b1 { background: var(--line); color: var(--muted); } .rate.b2 { background: #fbecc9; color: #7a5300; }
+.rate.b3 { background: #d6f2e4; color: #1b6b47; } .rate.b4 { background: var(--b4); color: #fff; }
+@media (prefers-color-scheme: dark) { .rate.b2 { background: #3b3018; color: #f0c76a; } .rate.b3 { background: #173a2b; color: #7fe0b0; } .rate.b4 { color: #08261a; } }
+@media (max-width: 520px) { .bite-ring { width: 82px; height: 82px; } .bite-ring b { font-size: 1.7rem; } .bite-best .win { font-size: 1.1rem; } }
+@media print { .card.bite { display: none; } }

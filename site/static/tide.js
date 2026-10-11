@@ -75,7 +75,7 @@
     if (wk && sun) sun.innerHTML = `Sunrise / sunset ${wk.cells[2].innerHTML} · ${wk.cells[3].innerHTML}`;
     const extra = [];
     const fish = row("table.fishing");
-    if (fish) extra.push(`<p><b>Fishing:</b> ${fish.cells[1].innerHTML} major ${fish.cells[2].textContent}</p>`);
+    if (fish) extra.push(`<p><b>Fishing:</b> ${fish.cells[1].innerHTML} best ${fish.cells[2].textContent}</p>`);
     const cur = row("table.currents");
     if (cur) extra.push(`<div><b>Currents:</b><div class="evs">${cur.cells[1].innerHTML}</div></div>`);
     document.getElementById("dayextra").innerHTML = extra.join("");

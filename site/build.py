@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "25"
+CSS_VER = "26"
 
 
 def ga_tag():
@@ -454,25 +454,159 @@ def fish_day(st, d, tz, f, sun_by_day):
     return min(score, 4), majors, minors
 
 
-def fishing_section(st, name, week, tz, f, sun_by_day):
-    """Solunar periods (moon overhead/underfoot = major, moonrise/moonset = minor) and a simple day rating."""
+# ---------- hourly bite forecast (same model as the app) ----------
+# Score per hour, from what anglers most often track: solunar periods (up to 32), moving water vs this station's
+# usual (up to 26), dawn/dusk light (up to 16) and moon phase (up to 12). In the browser, static/bite.js adds the
+# live wind, gusts and pressure trend from the National Weather Service. Calibrated so a typical day lands near 55
+# and roughly the best 15% of days score above 75.
+BITE_BANDS = [(75, "Excellent"), (55, "Good"), (35, "Fair"), (0, "Slow")]
+
+
+def bite_label(s):
+    return next(label for cut, label in BITE_BANDS if s >= cut)
+
+
+def bite_band(s):
+    return 4 if s >= 75 else 3 if s >= 55 else 2 if s >= 35 else 1
+
+
+def _bump(t, mid, width):
+    return math.exp(-(((t - mid) / width) ** 2))
+
+
+def _rate_at(events, t):
+    """How fast the water is rising or falling at time t (ft per hour), from the cosine curve."""
+    for (ta, ha, _), (tb, hb, _) in zip(events, events[1:]):
+        if ta <= t <= tb:
+            return abs(hb - ha) * math.pi / 2 * math.sin(math.pi * (t - ta) / (tb - ta)) / ((tb - ta) / 3600)
+    return None
+
+
+def bite_days(st, days, tz, events, f, sun_by_day):
+    """{date: (score, [hour scores], [(from, to, peak) best windows])} for each day in days."""
+    rates = sorted(abs(b[1] - a[1]) * math.pi / 2 / ((b[0] - a[0]) / 3600) for a, b in zip(events, events[1:]) if b[0] > a[0])
+    max_rate = rates[int(len(rates) * 0.8)] if rates else 1
+    typical = f.get("mean_range") or 1
+    out = {}
+    for d in days:
+        start = dt.datetime.combine(d, dt.time(0), tz).timestamp()
+        end = dt.datetime.combine(d + dt.timedelta(days=1), dt.time(0), tz).timestamp()
+        mt = astro.moon_times(st["lat"], st["lng"], d, tz)
+        periods = [(m.timestamp(), 1.0, 70 * 60) for m in mt["over"] + mt["under"]] + \
+                  [(m.timestamp(), 0.55, 45 * 60) for m in mt["rise"] + mt["set"]]
+        noon = dt.datetime.combine(d, dt.time(12), tz)
+        phase = ((noon - astro.NEW_MOON).total_seconds() / 86400 % astro.SYNODIC) / astro.SYNODIC
+        pf = max(0.0, 1 - min(phase, abs(phase - 0.5), 1 - phase) / 0.15)
+        rise, sset = sun_by_day.get(d, (None, None))
+        hours, t = [], start + 1800
+        while t < end:
+            sol = max([w * _bump(t, mid, width) for mid, w, width in periods] or [0])
+            r = _rate_at(events, t)
+            mv = min(1.0, r / max_rate) if r is not None else 0
+            light = max([_bump(t, x.timestamp(), 75 * 60) for x in (rise, sset) if x] or [0])
+            hours.append((t, 8 + sol * 32 + mv * 26 + light * 16 + pf * 12))
+            t += 3600
+        if not hours:
+            continue
+        pts = [h for _, h in curve_points(events, start, end, 1200)]
+        rr = (max(pts) - min(pts)) / typical if pts else 1
+        day_adj = (pf - 0.3) * 20 + max(-0.5, min(0.7, rr - 1.1)) * 12
+        scale = lambda raw: max(3, min(98, 55 + (raw - 58) * 1.8 + day_adj))
+        top3 = sum(sorted((s for _, s in hours), reverse=True)[:3]) / min(3, len(hours))
+        scores = [round(scale(s)) for _, s in hours]
+        cut = max(max(scores) - 12, 40)
+        windows, run = [], None
+        for (t, _), s in zip(hours, scores):
+            if s >= cut:
+                run = [t - 1800, t + 1800, s] if not run else [run[0], t + 1800, max(run[2], s)]
+            elif run:
+                windows.append(run)
+                run = None
+        if run:
+            windows.append(run)
+        windows.sort(key=lambda w: -w[2])
+        out[d] = (round(max(5, scale(top3))), scores, windows[:3])
+    return out
+
+
+SPECIES_GUIDE = json.loads((Path(__file__).resolve().parent / "species_guide.json").read_text())
+
+
+def region_of(st):
+    return next((k for k, v in SPECIES_GUIDE["regions"].items() if st["state"] in v), "ma")
+
+
+def biting_now(st, month):
+    """Regional seasonal guide: species in season this month first, then ones starting next month."""
+    nxt = 1 if month == 12 else month + 1
+    out = [(n, tip, month in ms) for n, ms, tip in SPECIES_GUIDE["species"].get(region_of(st), [])
+           if month in ms or nxt in ms]
+    return sorted(out, key=lambda x: not x[2])
+
+
+def span(a, b):
+    return f"{clock(a)}–{clock(b)}"
+
+
+def fishing_section(st, name, week, tz, f, sun_by_day, bite):
+    """Day-by-day fishing table: bite score, best windows, and the solunar periods behind them."""
     rows = []
     for d in week:
         score, majors, minors = fish_day(st, d, tz, f, sun_by_day)
-        label = FISH_LABELS[score]
-        span = lambda a, b: f"{clock(a)}–{clock(b)}"
+        b = bite.get(d)
         maj = ", ".join(span(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors) or "—"
         mnr = ", ".join(span(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors) or "—"
+        best = ", ".join(span(dt.datetime.fromtimestamp(a, tz), dt.datetime.fromtimestamp(z, tz)) for a, z, _ in b[2][:2]) if b else "—"
+        rate = (f'<span class="rate b{bite_band(b[0])}">{b[0]} · {bite_label(b[0])}</span>' if b
+                else f'<span class="rate r{score}">{FISH_LABELS[score]}</span>')
         rows.append(f'<tr data-day="{d.isoformat()}"><th scope="row">{day_label(d, True)}</th>'
-                    f'<td><span class="rate r{score}">{label}</span></td><td>{maj}</td><td>{mnr}</td></tr>')
+                    f'<td>{rate}</td><td>{best}</td><td>{maj}</td><td>{mnr}</td></tr>')
     return f"""
 <h2 id="fishing">Best fishing times at {esc(name)}</h2>
-<p>Solunar periods for this spot: <b>major</b> periods (about two hours) are centred on the moon passing overhead or underfoot,
-and <b>minor</b> periods (about an hour) on moonrise and moonset. Days near the new and full moon rate higher, and so does a
-period that lines up with sunrise, sunset or a turn of the tide.</p>
-<div class="scroll"><table class="tides week fishing"><thead><tr><th>Day</th><th>Rating</th><th>Major periods</th><th>Minor periods</th></tr></thead>
+<p>The <b>bite score</b> (0 to 100) adds up what anglers watch most: moving water (a tide running harder than usual here
+scores higher), <b>solunar periods</b> (major periods of about two hours centred on the moon overhead or underfoot, minor
+periods of about an hour on moonrise and moonset), dawn and dusk light, and how close it is to the new or full moon.
+<b>Best times</b> are the stretches of the day scoring near that day's top.</p>
+<div class="scroll"><table class="tides week fishing"><thead><tr><th>Day</th><th>Bite score</th><th>Best times</th><th>Major periods</th><th>Minor periods</th></tr></thead>
 <tbody>{"".join(rows)}</tbody></table></div>
-<p class="note">Solunar times are a rule of thumb many anglers use, not a guarantee. Moving water around a tide change usually matters as much.</p>"""
+<p class="note">A planning aid, not a guarantee. Wind, water clarity, bait and pressure changes matter too; the forecast above adds live wind and pressure when you open the page.</p>"""
+
+
+def bite_card(st, name, bite, today, week, tz):
+    """'Fishing forecast' card: today's score, best windows and an hour-by-hour strip. static/bite.js makes the
+    days clickable, marks the current hour, folds in live wind, gusts, rain and pressure, and adds the radar loop."""
+    if today not in bite:
+        return ""
+    score, hrs, wins = bite[today]
+    month = dt.datetime.combine(today, dt.time(12), tz)
+    chips = "".join(
+        f'<button type="button" data-bd="{d.isoformat()}" aria-pressed="{str(d == today).lower()}">'
+        f'<span>{"Today" if d == today else d.strftime("%a")}</span><b class="b{bite_band(bite[d][0])}">{bite[d][0]}</b></button>'
+        for d in week if d in bite)
+    bars = "".join(f'<i class="b{bite_band(s)}" style="height:{max(6, s)}%" title="{clock(dt.datetime.fromtimestamp(dt.datetime.combine(today, dt.time(0), tz).timestamp() + 3600 * n, tz))}: {s}"></i>'
+                   for n, s in enumerate(hrs))
+    best = " and ".join(span(dt.datetime.fromtimestamp(a, tz), dt.datetime.fromtimestamp(z, tz)) for a, z, _ in wins[:2])
+    sp = biting_now(st, month.month)
+    region = SPECIES_GUIDE["names"].get(region_of(st), "")
+    sp_html = "".join(f'<li class="{"now" if now else "soon"}"><b>{esc(n)}</b> <small>{"In season" if now else "Starting soon"}</small><span>{esc(tip)}</span></li>'
+                      for n, tip, now in sp)
+    ph, lit = astro.moon(month)
+    return f"""
+<section class="card bite" id="bite">
+<div class="bite-head"><h2>{ico("fish")}Fishing forecast</h2><span class="sub" id="bite-sub">Hour by hour at {esc(name)}</span></div>
+<div class="bite-days" id="bite-days" role="group" aria-label="Day">{chips}</div>
+<div class="bite-main">
+<div class="bite-ring b{bite_band(score)}" id="bite-ring"><b id="bite-score">{score}</b><span id="bite-label">{bite_label(score)}</span></div>
+<div class="bite-best"><p class="lbl">Best times</p><p class="win" id="bite-win">{best or "—"}</p>
+<p class="why" id="bite-why">{esc(ph if ph.lower().endswith("moon") else ph + " moon")} ({lit}% lit)</p></div>
+</div>
+<div class="bite-bars" id="bite-bars" aria-hidden="true">{bars}</div>
+<div class="bite-axis" aria-hidden="true"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+<p class="bite-hour" id="bite-hour" aria-live="polite"></p>
+<ul class="bite-factors" id="bite-factors"></ul>
+<details class="bite-radar" id="bite-radar" hidden><summary>{ico("forecast")}Rain radar</summary><div class="radar-box"></div></details>
+{f'<h3>Biting around here in {month.strftime("%B")}</h3><ul class="biting">{sp_html}</ul><p class="note">General seasonal guide for {esc(region)}. Seasons, sizes and limits vary, so check your state rules before keeping fish.</p>' if sp else ""}
+</section>"""
 
 
 WX_CH = {"162.550": 1, "162.400": 2, "162.475": 3, "162.425": 4, "162.450": 5, "162.500": 6, "162.525": 7}
@@ -711,6 +845,8 @@ def station_page(st, ctx):
         sc, majors, minors = fish_day(st, d, tz, f, sun_by_day)
         fish[d.isoformat()] = [sc, [int(m.timestamp()) for m in majors], [int(m.timestamp()) for m in minors]]
     data["fish"] = fish
+    bite = bite_days(st, week, tz, events, f, sun_by_day)
+    data["bite"] = {d.isoformat(): [sc, hrs, [[int(a), int(z), p] for a, z, p in w]] for d, (sc, hrs, w) in bite.items()}
     if ctx.get("cur"):
         meta, cdist, cev = ctx["cur"]
         data["cur"] = {"name": tidy(meta["name"]), "mi": cdist, "ev": [
@@ -719,11 +855,11 @@ def station_page(st, ctx):
     if town and town[0].lower() not in name.lower():
         title = f"{town[0]}, {st['state']} Tide Chart & Tide Times ({name})"
         desc = (f"Today's high and low tide times for {name} near {town[0]}, {state}, with a tide chart, a 7-day tide table, "
-                f"currents, fishing times and the marine forecast. From NOAA station {st['id']}.")
+                f"currents, an hourly fishing forecast and the marine forecast. From NOAA station {st['id']}.")
     else:
         title = f"{name}, {st['state']} Tide Chart & Tide Times"
         desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
-                f"currents, fishing times and the marine forecast. From NOAA station {st['id']}.")
+                f"currents, an hourly fishing forecast and the marine forecast. From NOAA station {st['id']}.")
     near_town = (f' · <a href="{BASE}{town[3]}">near {esc(town[0])}</a> ({town[2]:.0f} mi)' if town and town[2] >= 1
                  else f' · <a href="{BASE}{town[3]}">{esc(town[0])}</a>' if town else "")
     gmap = f"https://www.google.com/maps?q={st['lat']},{st['lng']}"
@@ -737,10 +873,9 @@ def station_page(st, ctx):
 <tbody>{month_rows}</tbody></table></div>
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>"""
     cur_html = currents_section(name, ctx.get("cur"), week, tz)
-    fish_html = fishing_section(st, name, week, tz, f, sun_by_day)
-    jumps = [("Today", "chart", "today")] + ([("Email me", "mail", "emails")] if ALERTS_API else []) + [("Plan a trip", "plan", "plan"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
+    fish_html = fishing_section(st, name, week, tz, f, sun_by_day, bite)
+    jumps = [("Today", "chart", "today")] + ([("Email me", "mail", "emails")] if ALERTS_API else []) + [("Fishing", "fish", "bite"), ("Plan a trip", "plan", "plan"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
     jumps += [("Currents", "current", "currents")] if cur_html else []
-    jumps += [("Fishing", "fish", "fishing")]
     jumps += [("Low tides", "low", "lows")] if dl_html else []
     jumps += [("Month", "cal", "month")]
     jumps += [("Nearby", "pin", "around")] if ctx.get("places") else []
@@ -798,6 +933,8 @@ def station_page(st, ctx):
 <p class="note" id="plan-note"></p>
 </section>
 
+{bite_card(st, name, bite, today, week, tz)}
+
 {signup_card(st, name, ctx)}
 
 {live_section(st, name, ctx)}
@@ -841,7 +978,7 @@ def station_page(st, ctx):
                 "address": {"@type": "PostalAddress", "addressRegion": state, "addressCountry": "US",
                             **({"addressLocality": town[0]} if town else {})},
                 "url": SITE_URL + "/" + st["path"]}
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js", "community.js", "pocket.js"),
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "bite.js", "live.js", "planner.js", "signup.js", "community.js", "pocket.js"),
                 extra_head='<script type="application/ld+json">' + json.dumps(place_ld) + "</script>")
 
 
@@ -1064,7 +1201,7 @@ def town_page(town, near, nearby_towns):
     body = f"""
 <h1>Tides near {esc(tname)}, {esc(state)}</h1>
 <p class="lede">High and low tides today, {day_label(ftoday)}, at the {len(near)} NOAA tide station{"s" if len(near) != 1 else ""} closest to {esc(tname)}.
-Tap a station for its full chart, the week ahead, currents, fishing times and the marine forecast.</p>
+Tap a station for its full chart, the week ahead, currents, an hourly fishing forecast and the marine forecast.</p>
 <div class="spots">{"".join(cards)}</div>
 <p>{" ".join(facts)}</p>
 {cta}
@@ -1076,7 +1213,7 @@ Tap a station for its full chart, the week ahead, currents, fishing times and th
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (f"Tides near {tname}", path)]
     return path, page(f"{tname}, {tst} Tide Chart & Tide Times Today",
                       f"High and low tide times today for {tname}, {state}, from the closest NOAA tide stations, with charts, "
-                      f"currents, fishing times and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
+                      f"currents, an hourly fishing forecast and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
 
 
 def state_page(code, stations, towns=()):
@@ -1204,7 +1341,7 @@ def home(groups, total, popular):
 </svg>
 <div class="hero-in">
 <h1>Tide times for every beach, bay and harbor in the US</h1>
-<p>{total:,} NOAA stations with today's tide chart, currents, fishing times and the marine forecast. Updated every night.</p>
+<p>{total:,} NOAA stations with today's tide chart, currents, an hourly fishing forecast and the marine forecast. Updated every night.</p>
 <div class="search big"><input type="search" placeholder="Search a beach, harbor or town" aria-label="Search tide stations" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
 <button type="button" class="locate" data-locate><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>Find tides near me</button>
 <p class="locate-msg" data-locate-msg hidden></p>
