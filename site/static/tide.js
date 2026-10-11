@@ -32,6 +32,7 @@
   };
 
   // Chart (same layout as the server-rendered SVG in site/build.py) for one day.
+  let geo = null; // x/y mapping of the chart on screen, for the hover readout
   const draw = ([iso, [s0, s1, rise, set, label]], isToday) => {
     t0 = s0; t1 = s1;
     const W = 640, H = 220, L = 34, B = 26, T = 22;
@@ -59,8 +60,9 @@
       });
       const nv = isToday ? height(now) : null;
       if (nv !== null) s += `<line class="nowline" x1="${x(now).toFixed(1)}" x2="${x(now).toFixed(1)}" y1="${T}" y2="${H - B}"/><circle class="nowpt" cx="${x(now).toFixed(1)}" cy="${y(nv).toFixed(1)}" r="5"/>`;
-      s += `<text class="ax" x="2" y="${T + 4}">${ft(hi - span * 0.15)}</text></svg>`;
+      s += `<text class="ax" x="2" y="${T + 4}">${ft(hi - span * 0.15)}</text><g class="hover" hidden></g></svg>`;
       document.getElementById("chart").innerHTML = s;
+      geo = { x, y, W, H, T, B, L, t0, t1 };
     }
     document.getElementById("today-title").textContent = isToday ? `Tides today, ${label}` : `Tides ${label}`;
     document.getElementById("tlist").innerHTML = ev.filter(([t]) => t0 <= t && t < t1)
@@ -78,6 +80,29 @@
     if (cur) extra.push(`<div><b>Currents:</b><div class="evs">${cur.cells[1].innerHTML}</div></div>`);
     document.getElementById("dayextra").innerHTML = extra.join("");
   };
+
+  // Tap or hover the chart to read the height at any time of day.
+  const chartBox = document.getElementById("chart");
+  const readout = (e) => {
+    const svg = chartBox.querySelector("svg");
+    const g = svg && svg.querySelector("g.hover");
+    if (!geo || !g) return;
+    const r = svg.getBoundingClientRect();
+    const sx = (e.clientX - r.left) / r.width * geo.W;
+    const t = geo.t0 + (sx - geo.L) / (geo.W - geo.L - 6) * (geo.t1 - geo.t0);
+    const v = t >= geo.t0 && t <= geo.t1 ? height(t) : null;
+    if (v === null) { g.hidden = true; return; }
+    const dir = height(t + 300) > v ? "rising" : "falling";
+    const cx = geo.x(t), cy = geo.y(v);
+    const anchor = cx < 120 ? "start" : cx > geo.W - 120 ? "end" : "middle";
+    g.innerHTML = `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${geo.T}" y2="${geo.H - geo.B}"/>` +
+      `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5"/>` +
+      `<text x="${cx.toFixed(1)}" y="${geo.T - 6}" text-anchor="${anchor}">${clock(t)} · ${ft(v)}, ${dir}</text>`;
+    g.hidden = false;
+  };
+  chartBox.addEventListener("pointermove", readout);
+  chartBox.addEventListener("pointerdown", readout);
+  chartBox.addEventListener("pointerleave", () => { const g = chartBox.querySelector("g.hover"); if (g) g.hidden = true; });
 
   const ti = days.indexOf(today);
   draw(today, true);

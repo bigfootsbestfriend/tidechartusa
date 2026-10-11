@@ -124,7 +124,9 @@
       const pt = await getJSON(`https://api.weather.gov/points/${lat},${lng}`, NWS);
       const p = pt.properties;
       const fc = await getJSON(p.forecast, NWS);
-      const periods = (fc.properties.periods || []).slice(0, 4);
+      window.tcWx = fc.properties.periods || [];
+      window.dispatchEvent(new Event("tc:wx")); // the trip planner uses the wind forecast
+      const periods = window.tcWx.slice(0, 4);
       if (!periods.length) return;
       box.innerHTML = `<div class="wx">${periods.map((q) => `<div class="wx-p">
         ${q.icon ? `<img src="${esc(q.icon.replace("size=medium", "size=large"))}" alt="" width="56" height="56" loading="lazy">` : ""}

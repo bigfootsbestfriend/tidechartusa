@@ -121,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "9"
+CSS_VER = "10"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -411,30 +411,39 @@ with the falling tide. Times are the peak of each run, in knots.{dirs} The stron
 <p class="note">Current predictions can differ a lot over short distances: check the station location on NOAA before planning a passage.</p>"""
 
 
+FISH_LABELS = ["Fair", "Fair", "Good", "Very good", "Excellent"]
+
+
+def fish_day(st, d, tz, f, sun_by_day):
+    """Solunar score (0-4) and major/minor periods for one day. Also feeds the trip planner."""
+    mt = astro.moon_times(st["lat"], st["lng"], d, tz)
+    majors = sorted(mt["over"] + mt["under"])
+    minors = sorted(mt["rise"] + mt["set"])
+    ph, lit = astro.moon(dt.datetime.combine(d, dt.time(12), tz))
+    score = 2 if lit <= 10 or lit >= 90 else 1 if lit <= 25 or lit >= 75 else 0
+    rise, sset = sun_by_day.get(d, (None, None))
+    windows = [(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors] + \
+              [(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors]
+    if rise and any(a - dt.timedelta(hours=1) <= x <= b + dt.timedelta(hours=1)
+                    for a, b in windows for x in (rise, sset)):
+        score += 1
+    turns = [dt.datetime.fromtimestamp(t, tz) for t, _, _ in f["by_day"].get(d, [])]
+    if any(a <= x <= b for a, b in windows[:len(majors)] for x in turns):
+        score += 1
+    return min(score, 4), majors, minors
+
+
 def fishing_section(st, name, week, tz, f, sun_by_day):
     """Solunar periods (moon overhead/underfoot = major, moonrise/moonset = minor) and a simple day rating."""
     rows = []
     for d in week:
-        mt = astro.moon_times(st["lat"], st["lng"], d, tz)
-        majors = sorted(mt["over"] + mt["under"])
-        minors = sorted(mt["rise"] + mt["set"])
-        ph, lit = astro.moon(dt.datetime.combine(d, dt.time(12), tz))
-        score = 2 if lit <= 10 or lit >= 90 else 1 if lit <= 25 or lit >= 75 else 0
-        rise, sset = sun_by_day.get(d, (None, None))
-        windows = [(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors] + \
-                  [(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors]
-        if rise and any(a - dt.timedelta(hours=1) <= x <= b + dt.timedelta(hours=1)
-                        for a, b in windows for x in (rise, sset)):
-            score += 1
-        turns = [dt.datetime.fromtimestamp(t, tz) for t, _, _ in f["by_day"].get(d, [])]
-        if any(a <= x <= b for a, b in windows[:len(majors)] for x in turns):
-            score += 1
-        label = ["Fair", "Fair", "Good", "Very good", "Excellent"][min(score, 4)]
+        score, majors, minors = fish_day(st, d, tz, f, sun_by_day)
+        label = FISH_LABELS[score]
         span = lambda a, b: f"{clock(a)}–{clock(b)}"
         maj = ", ".join(span(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors) or "—"
         mnr = ", ".join(span(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors) or "—"
         rows.append(f'<tr data-day="{d.isoformat()}"><th scope="row">{day_label(d, True)}</th>'
-                    f'<td><span class="rate r{min(score, 4)}">{label}</span></td><td>{maj}</td><td>{mnr}</td></tr>')
+                    f'<td><span class="rate r{score}">{label}</span></td><td>{maj}</td><td>{mnr}</td></tr>')
     return f"""
 <h2 id="fishing">Best fishing times at {esc(name)}</h2>
 <p>Solunar periods for this spot: <b>major</b> periods (about two hours) are centred on the moon passing overhead or underfoot,
@@ -645,6 +654,16 @@ def station_page(st, ctx):
 
     data = {"ev": [[int(t), v, k] for t, v, k in events], "name": f"{name}, {st['state']}", "id": st["id"],
             "days": {d.isoformat(): [*map(int, bounds(d)), *sun_epochs(d), day_label(d)] for d in month}}
+    # Trip planner: fishing score and major periods for two weeks, and the nearest current predictions.
+    fish = {}
+    for d in days[start:start + 14]:
+        sc, majors, _ = fish_day(st, d, tz, f, sun_by_day)
+        fish[d.isoformat()] = [sc, [int(m.timestamp()) for m in majors]]
+    data["fish"] = fish
+    if ctx.get("cur"):
+        meta, cdist, cev = ctx["cur"]
+        data["cur"] = {"name": tidy(meta["name"]), "mi": cdist, "ev": [
+            [int(dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz).timestamp()), v, k] for t, v, k in cev]}
     title = f"{name}, {st['state']} Tide Chart & Tide Times"
     desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
             f"sunrise and sunset, and the month ahead. From NOAA station {st['id']}.")
@@ -659,7 +678,7 @@ def station_page(st, ctx):
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>"""
     cur_html = currents_section(name, ctx.get("cur"), week, tz)
     fish_html = fishing_section(st, name, week, tz, f, sun_by_day)
-    jumps = [("Today", "chart", "today"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
+    jumps = [("Today", "chart", "today"), ("Plan a trip", "plan", "plan"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
     jumps += [("Currents", "current", "currents")] if cur_html else []
     jumps += [("Fishing", "fish", "fishing")]
     jumps += [("Low tides", "low", "lows")] if dl_html else []
@@ -670,6 +689,7 @@ def station_page(st, ctx):
 <h1>{esc(name)} tide chart</h1>
 <p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
 {jump_nav(jumps)}
+<div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div>
 
 <section class="today card" id="today">
 <div class="today-head"><h2>{ico("chart")}<span id="today-title">Tides today, {day_label(today)}</span></h2><p class="now" id="now" hidden></p></div>
@@ -678,6 +698,19 @@ def station_page(st, ctx):
 <ul class="tlist" id="tlist">{today_rows}</ul>
 <div class="dayextra" id="dayextra"></div>
 <p class="sunline" id="sunline">Sunrise {clock(rise) if rise else '—'} · Sunset {clock(sset) if sset else '—'} · {moon_cell(today)}</p>
+</section>
+
+<section class="card plan" id="plan" hidden>
+<h2>{ico("plan")}Plan a trip</h2>
+<p class="sub">Pick what you want to do and we'll rank the next two weeks for it.</p>
+<div class="acts" role="radiogroup" aria-label="Activity">
+<button type="button" data-act="pool" aria-pressed="true">{ico("pool")}Tide pooling</button>
+<button type="button" data-act="fish" aria-pressed="false">{ico("fish")}Fishing</button>
+<button type="button" data-act="kayak" aria-pressed="false">{ico("kayak")}Kayak / paddle</button>
+<button type="button" data-act="walk" aria-pressed="false">{ico("walk")}Beach walk</button>
+</div>
+<ol class="plan-list" id="plan-list"></ol>
+<p class="note" id="plan-note"></p>
 </section>
 
 {live_section(st, name, ctx)}
@@ -707,7 +740,7 @@ def station_page(st, ctx):
 <script type="application/json" id="tide-data">{json.dumps(data, separators=(",", ":"))}</script>
 """
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"])]
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("tide.js", "live.js"))
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js"))
 
 
 # ---------- other pages ----------
@@ -750,6 +783,10 @@ ICON = {
     "week": '<path d="M4 6h16M4 12h16M4 18h10"/>',
     "low": '<path d="M12 3v10m-4-4 4 4 4-4"/><path d="M3 19c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2"/>',
     "radio": '<rect x="3" y="9" width="18" height="12" rx="2"/><path d="M7 9l10-5"/><circle cx="15" cy="15" r="2.5"/><path d="M6 13h4M6 17h4"/>',
+    "plan": '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+    "pool": '<path d="M3 15c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2"/><path d="M8 9a2 2 0 1 0 0-.01M15 7l1.5 3h-3z"/>',
+    "kayak": '<path d="M2 15c4 2 16 2 20 0"/><path d="M5 20 19 6"/><path d="M17 4l3 3M4 17l3 3"/>',
+    "walk": '<circle cx="13" cy="4" r="2"/><path d="m9 21 2-6 3 3v3M8 11l3-4 3 2 3 1M11 7l-1 5"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 
@@ -825,7 +862,7 @@ def home(groups, total, popular):
 """
     return page("Tide Charts & Tide Times for Every US Beach and Harbor",
                 f"Free tide charts, high and low tide times, currents, fishing times and marine forecasts for {total:,} NOAA stations across the US.",
-                "", body, scripts=("site.js",))
+                "", body, scripts=("units.js", "site.js"))
 
 
 GUIDE = """

@@ -237,3 +237,31 @@ nav.jump a.here svg.ico { color: var(--card); }
 .tabbar button { display: inline-flex; align-items: center; gap: 6px; }
 details.radio summary svg.ico { margin-right: 6px; }
 @media print { nav.jump { display: none !important; } }
+/* Trip planner */
+.plan .acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+@media (max-width: 640px) { .plan .acts { grid-template-columns: repeat(2, 1fr); } }
+.plan .acts button { display: flex; flex-direction: column; align-items: center; gap: 6px; font: inherit; font-weight: 600; font-size: .92rem;
+  padding: 12px 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.plan .acts button svg.ico { width: 28px; height: 28px; color: var(--sea); }
+.plan .acts button[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--card); }
+.plan .acts button[aria-pressed="true"] svg.ico { color: var(--card); }
+.plan-list { list-style: none; padding: 0; margin: 0; counter-reset: pl; }
+.plan-list li { padding: 10px 0; border-top: 1px solid var(--line); }
+.pl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pl-when { margin-left: auto; font-weight: 700; color: var(--sea); }
+.plan-list p { margin: 4px 0 0; font-size: .93rem; color: var(--muted); }
+.pl-see, .linkish { font: inherit; font-size: .88rem; background: none; border: 0; padding: 0; margin-top: 4px; color: var(--sea); text-decoration: underline; cursor: pointer; }
+.rate.r0 { background: var(--line); color: var(--muted); }
+/* Units switch and chart readout */
+.units { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin: -6px 0 10px; font-size: .85rem; color: var(--muted); }
+.units span:first-child { margin-right: 4px; }
+.units .sep { width: 10px; }
+.units button { font: inherit; font-weight: 600; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.units button[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--card); }
+#chart { touch-action: pan-y; cursor: crosshair; }
+#chart g.hover line { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
+#chart g.hover circle { fill: var(--card); stroke: var(--sea-2); stroke-width: 2.5; }
+#chart g.hover text { fill: var(--ink); font-size: 13px; font-weight: 700; paint-order: stroke; stroke: var(--card); stroke-width: 4px; }
+@media print { .plan, .units { display: none !important; } }
+.rate.r4 { background: var(--sea); color: var(--card); }
+.card.plan { margin-top: 16px; } .card.plan h2 { margin-top: 0; }
