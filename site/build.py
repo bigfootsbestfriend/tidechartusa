@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import astro  # noqa: E402
+import kingtides  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -125,7 +126,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "31"
+CSS_VER = "32"
 
 
 def ga_tag():
@@ -186,7 +187,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -909,7 +910,9 @@ def station_page(st, ctx):
     week_html = f"""<h2 id="week">Tide times this week</h2>
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
 <tbody>{week_rows}</tbody></table></div>"""
+    kt_line = kt_station_line(st, ctx["kt"], ctx["today"]) if ctx.get("kt") else ""
     month_html = f"""<h2 id="month">Tide table: {m_title}</h2>
+{kt_line}
 <p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button>{year_links}</p>
 <div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
 <tbody>{month_rows}</tbody></table></div>
@@ -1117,6 +1120,183 @@ def year_page(st, year, raw, tz):
     return path, page(title, desc, path, body, crumbs=crumbs, scripts=("units.js",))
 
 
+# Official king tide photo projects, by state (checked 2026-10-11). MyCoast covers several states from one app.
+KT_PROGRAMS = {
+    "CA": [("California King Tides Project", "https://www.coastal.ca.gov/kingtides/",
+            "run by the California Coastal Commission; share photos of the highest tides near you")],
+    "OR": [("Oregon King Tides Project", "https://www.oregonkingtides.net/",
+            "photos from the Oregon coast help map where water reaches today")],
+    "WA": [("Washington Sea Grant king tides calendar", "https://waseagrant.uw.edu/our-programs/coastal-hazards-climate-resilience/king-tides/king-tides-calendar/",
+            "the official Washington dates and a guide to sharing photos")],
+    "HI": [("Hawaiʻi & Pacific Islands King Tides Project", "https://www.pacioos.hawaii.edu/projects/king-tides/",
+            "University of Hawaiʻi Sea Grant; photos go on a public map")],
+}
+for _c in ("MA", "MD", "NJ", "RI", "SC", "WA", "FL", "TX"):
+    KT_PROGRAMS.setdefault(_c, []).append(("MyCoast", "https://mycoast.org/",
+                                           "a free app for reporting king tides and coastal flooding, used by state agencies and researchers"))
+
+KT_SAFETY = """<ul>
+<li>Stay off jetties, sea walls and rock shelves near the peak. Waves run higher than usual on a king tide.</li>
+<li>On the Pacific coast, keep off drift logs and watch for sneaker waves; a log can roll on you in a few inches of surf.</li>
+<li>Don't drive or walk through flooded streets. Salt water ruins cars, and the curb and drains are hidden.</li>
+<li>Check the marine forecast. Onshore wind, low air pressure or heavy rain can add a foot or more to the predicted tide.</li>
+</ul>"""
+
+KT_PHOTO = """<ul>
+<li>Arrive half an hour before the peak time for your spot and stay until it passes.</li>
+<li>Include something people know for scale: a stair, a sign, a piling, a sea wall or a road.</li>
+<li>Take a matching photo from the same spot at an ordinary high tide. The pair shows the difference better than words.</li>
+<li>Note the place, date and time, and share it with your state's project below. Planners use these photos to see where the water will reach as sea level rises.</li>
+</ul>"""
+
+
+def kt_path(code):
+    return f"king-tides/{slugify(STATES.get(code, code))}/"
+
+
+def kt_next(kt, today):
+    """The spot's next king tide window that hasn't finished."""
+    return next((w for w in kt["windows"] if w[1] >= today), None)
+
+
+def kt_station_line(st, kt, today):
+    """One line for the station page: the spot's next king tides, linked to the state page."""
+    w = kt_next(kt, today)
+    if not w:
+        return ""
+    a, b, pk, v = w
+    state = STATES.get(st["state"], st["state"])
+    return (f'<p class="tip kt-line"><b>Next king tides here:</b> {kingtides.span(a, b)}, peaking at {ft(v)} on '
+            f'{pk:%a %b} {pk.day} at {clock(pk)} ({ft(v - kt["typical"])} above a typical high tide). '
+            f'<a href="{BASE}{kt_path(st["state"])}">King tides in {esc(state)}</a></p>')
+
+
+def kt_state_page(code, rows, today, built_at):
+    """King tide dates for one state: statewide windows, then every spot's next king tides."""
+    state = STATES.get(code, code)
+    season = kingtides.season_label(today)
+    wins = kingtides.state_windows([kt for _, kt in rows])
+    path = kt_path(code)
+    total = len(rows)
+    upcoming = [w for w in wins if w[1] >= today]
+    win_rows = "".join(
+        f'<tr><td><b>{kingtides.span(a, b)}</b></td><td>{pk:%a %b} {pk.day}</td><td>{n} of {t} spots</td></tr>'
+        for a, b, pk, n, t in upcoming)
+    first = upcoming[0] if upcoming else None
+    if first:
+        lede_next = (f"The next statewide king tides are <b>{kingtides.span(first[0], first[1])}</b>, "
+                     f"when {first[3]} of {total} spots have their highest tides of the year.")
+    else:
+        lede_next = "King tide dates here vary from spot to spot; find yours in the table below."
+    spot_rows = []
+    for st, kt in sorted(rows, key=lambda r: r[0]["pretty"].lower()):
+        nxt = [w for w in kt["windows"] if w[1] >= today][:3]
+        if not nxt:
+            continue
+        a, b, pk, v = nxt[0]
+        later = ", ".join(kingtides.span(x[0], x[1]) for x in nxt[1:])
+        spot_rows.append(
+            f'<tr data-n="{esc(st["pretty"].lower())}"><th scope="row"><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a></th>'
+            f'<td><b>{kingtides.span(a, b)}</b>{f"<br><small>then {later}</small>" if later else ""}</td>'
+            f'<td>{ft(v)} <small>{pk:%a %b} {pk.day}, {clock(pk)}<br>{ft(v - kt["typical"])} above a typical high</small></td></tr>')
+    biggest = sorted(rows, key=lambda r: -(r[1]["top"][1] - r[1]["typical"]))[:5]
+    big_list = "".join(
+        f'<li><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a>: {ft(kt["top"][1])} on {kt["top"][0]:%b} {kt["top"][0].day} '
+        f'at {clock(kt["top"][0])}, {ft(kt["top"][1] - kt["typical"])} above a typical high</li>' for st, kt in biggest)
+    progs = KT_PROGRAMS.get(code, [])
+    prog_html = ("<p>Share your photos with " + " or ".join(
+        f'<a href="{u}" rel="noopener">{esc(n)}</a> ({esc(d)})' for n, u, d in progs) + ".</p>") if progs else ""
+    body = f"""
+<article class="kt">
+<h1>King tides in {esc(state)}, {season}</h1>
+<p class="lede">King tides are the highest tides of the year. {lede_next} Dates, times and heights below come from NOAA
+predictions for {total} spots in {esc(state)}, worked out for the next 12 months.</p>
+<p class="tools"><a class="btn" href="{BASE}{path}king-tides.ics" download>{ico("cal")} Add {esc(state)} king tides to my calendar</a>
+<a href="{BASE}king-tides/">King tides in every state</a></p>
+<h2>{esc(state)} king tide dates</h2>
+<div class="scroll"><table class="tides kt-wins"><thead><tr><th>Dates</th><th>Peak day</th><th>Spots at their highest that day</th></tr></thead>
+<tbody>{win_rows}</tbody></table></div>
+<p class="note">Big states can have more than one season: one stretch of coast may peak in fall while another peaks in winter. The table for your spot below is the one to trust.</p>
+<h2>Biggest king tides in {esc(state)}</h2>
+<p>The spots where the year's highest tide stands furthest above an ordinary high tide:</p>
+<ol>{big_list}</ol>
+<h2 id="spots">King tide times for your spot</h2>
+<label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
+<div class="scroll"><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
+<tbody>{"".join(spot_rows)}</tbody></table></div>
+<h2>Photograph the king tides</h2>
+{KT_PHOTO}
+{prog_html}
+<h2>Stay safe</h2>
+{KT_SAFETY}
+<h2>How these dates are worked out</h2>
+<p>For every spot we take NOAA's high and low tide predictions for the next 12 months and find each day's highest tide.
+The days in that spot's top 5% (about 18 days a year) are its king tide days, and days next to each other make one
+window. A statewide window is a run of days when at least a quarter of the state's spots are in theirs. Heights are in
+feet above mean lower low water (MLLW), the zero on tide charts. Predictions don't include weather. Not for navigation.</p>
+</article>"""
+    title = f"{state} King Tides {season}: Dates, Times & Heights"
+    desc = (f"When are the king tides in {state}? " + (f"Next: {kingtides.span(first[0], first[1])}. " if first else "")
+            + f"Dates, peak times and heights for {total} spots, plus a calendar and photo tips.")
+    crumbs = [("Home", ""), ("King tides", "king-tides/"), (state, path)]
+    return path, page(title, desc, path, body, crumbs=crumbs, scripts=("units.js", "site.js")), \
+        kingtides.ics(state, wins, f"{SITE_URL}/{path}", built_at)
+
+
+def kt_hub(by_state, today):
+    """King tides in every state: what they are, when each coast gets them, and links to the state pages."""
+    season = kingtides.season_label(today)
+    blocks = []
+    for label, codes in REGIONS:
+        rows = []
+        for c in codes.split():
+            spots = by_state.get(c)
+            if not spots:
+                continue
+            wins = [w for w in kingtides.state_windows([kt for _, kt in spots]) if w[1] >= today]
+            later = ", ".join(kingtides.span(w[0], w[1]) for w in wins[1:3])
+            nxt = kingtides.span(wins[0][0], wins[0][1]) if wins else "varies by spot"
+            rows.append(f'<tr><th scope="row"><a href="{BASE}{kt_path(c)}">{esc(STATES.get(c, c))}</a></th>'
+                        f'<td><b>{nxt}</b></td><td>{later or "—"}</td><td>{len(spots)}</td></tr>')
+        if rows:
+            blocks.append(f'<h3>{esc(label)}</h3><div class="scroll"><table class="tides kt-hub"><thead><tr><th>State</th>'
+                          f'<th>Next king tides</th><th>Then</th><th>Spots</th></tr></thead>'
+                          f'<tbody>{"".join(rows)}</tbody></table></div>')
+    progs = []
+    for c, lst in sorted(KT_PROGRAMS.items(), key=lambda x: STATES.get(x[0], x[0])):
+        progs.append(f"<li><b>{esc(STATES.get(c, c))}:</b> " + "; ".join(
+            f'<a href="{u}" rel="noopener">{esc(n)}</a>' for n, u, _ in lst) + "</li>")
+    body = f"""
+<article class="kt">
+<h1>King tides {season}: dates for every US coast</h1>
+<p class="lede">King tides are the highest tides of the year. They flood low streets, cover beaches and push water over sea
+walls, and they show today what everyday high tides will look like as sea level rises. Pick your state for exact
+dates, peak times and heights at every NOAA tide station.</p>
+<div class="search"><input type="search" placeholder="Find your beach, pier or harbor" aria-label="Search spots" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
+<h2>When are the king tides?</h2>
+{"".join(blocks)}
+<h2>What makes a king tide</h2>
+<p>Every two weeks, around the new and full moon, the sun and moon line up and tides run bigger than usual (spring tides).
+Once a month the moon is also at its closest to Earth (perigee), and when that lands near a new or full moon the pull
+is strongest. In early January Earth is closest to the sun, which adds a little more. "King tide" isn't a scientific
+term: it's the name for the highest of these, a handful of days a year.</p>
+<p>The season isn't the same everywhere. On the Pacific coast the biggest tides come in winter, from November to
+January. In Florida and the Southeast they come in early fall, when ocean water is warmest and sea level is at its seasonal
+high. Hawaiʻi gets them in summer and winter. Because we work from each spot's own predictions, the dates on our state
+pages already match your stretch of coast.</p>
+<h2>Photograph the king tides</h2>
+{KT_PHOTO}
+<p>State and university projects collect these photos:</p>
+<ul>{"".join(progs)}</ul>
+<h2>Stay safe</h2>
+{KT_SAFETY}
+<p class="note">Dates come from NOAA tide predictions for the next 12 months: a spot's king tide days are its top 5% of
+daily high tides. Predictions don't include wind, storms or rain. Not for navigation.</p>
+</article>"""
+    return page(f"King Tides {season}: Dates for Every US State",
+                f"When are the king tides? Dates for the {season} king tides in every coastal state, with peak times and heights for each NOAA tide station.",
+                "king-tides/", body, crumbs=[("Home", ""), ("King tides", "king-tides/")], scripts=("units.js", "site.js"))
+
 EMBED_JS = """(() => {
   const d = JSON.parse(document.getElementById("d").textContent), ev = d.ev, now = Date.now() / 1000;
   const fmt = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: d.tz });
@@ -1261,7 +1441,7 @@ Tap a station for its full chart, the week ahead, currents, an hourly fishing fo
                       f"currents, an hourly fishing forecast and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
 
 
-def state_page(code, stations, towns=()):
+def state_page(code, stations, towns=(), kings=False):
     state = STATES.get(code, code)
     refs = sum(1 for s in stations if s["type"] == "R")
     items = "".join(f'<li data-n="{esc(s["pretty"].lower())}"><a href="{BASE}{s["path"]}">{esc(s["pretty"])}</a>'
@@ -1275,6 +1455,7 @@ def state_page(code, stations, towns=()):
 stations with their own long-term measurements; the rest are calculated from the nearest reference station.</p>
 <label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
+{f'<p class="tip">{ico("cal")} <a href="{BASE}{kt_path(code)}">King tide dates for {esc(state)}</a>: when the year\'s highest tides arrive at every spot.</p>' if kings else ""}
 <ul class="stations">{items}</ul>
 {town_list}"""
     path = f"tides/{slugify(state)}/"
@@ -1728,6 +1909,7 @@ def main():
 
     years = sorted(int(p.name) for p in YEAR_DIR.glob("*") if p.name.isdigit()) if YEAR_DIR.exists() else []
     year_pages = []
+    kt_by_state = {}
     groups = {}
     popular = {}
     built_data = {}
@@ -1751,9 +1933,13 @@ def main():
                "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None,
                "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None,
                "places": nearby.get(s["id"]), "years": [y for y in years if (YEAR_DIR / str(y) / f"{s['id']}.json").exists()]}
+        raws = {y: json.loads((YEAR_DIR / str(y) / f"{s['id']}.json").read_text()) for y in ctx["years"]}
+        ctx["kt"] = kingtides.windows_for(raws, tz, today) if raws else None
+        if ctx["kt"]:
+            kt_by_state.setdefault(s["state"], []).append((s, ctx["kt"]))
         write(s["path"] + "index.html", station_page(s, ctx))
         for y in ctx["years"]:
-            yp = year_page(s, y, json.loads((YEAR_DIR / str(y) / f"{s['id']}.json").read_text()), tz)
+            yp = year_page(s, y, raws[y], tz)
             if yp:
                 write(yp[0] + "index.html", yp[1])
                 year_pages.append(yp[0])
@@ -1785,8 +1971,18 @@ def main():
         by_state_towns.setdefault(tn[1], []).append((tn[0], path))
 
     for code, g in groups.items():
-        path, html_ = state_page(code, g, by_state_towns.get(code, ()))
+        path, html_ = state_page(code, g, by_state_towns.get(code, ()), code in kt_by_state)
         write(path + "index.html", html_)
+    kt_pages = []
+    if kt_by_state:
+        kt_today = built_at.date()
+        for code, rows in kt_by_state.items():
+            path, html_, cal = kt_state_page(code, rows, kt_today, built_at)
+            write(path + "index.html", html_)
+            write(path + "king-tides.ics", cal)
+            kt_pages.append(path)
+        write("king-tides/index.html", kt_hub(kt_by_state, kt_today))
+        kt_pages.insert(0, "king-tides/")
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
     write("manifest.webmanifest", json.dumps({
@@ -1824,7 +2020,7 @@ def main():
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
         urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
-               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages
+               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages + kt_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc><lastmod>{built_at.date().isoformat()}</lastmod></url>" for u in urls)
               + "</urlset>")
@@ -1835,7 +2031,7 @@ def main():
     host = urlparse(SITE_URL).hostname or ""
     if not host.endswith("github.io"):
         write("CNAME", host + "\n")
-    print(f"built {len(town_pages)} town pages, {len(year_pages)} year tide tables")
+    print(f"built {len(town_pages)} town pages, {len(year_pages)} year tide tables, {len(kt_pages)} king tide pages")
     print(f"built {built} station pages, {len(groups)} states" + ("" if LAUNCHED else " (noindex)"))
 
 

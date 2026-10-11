@@ -127,3 +127,14 @@ Sun and moon are calculated locally (`site/astro.py`).
   CC BY 4.0 only (iNaturalist's API terms bar commercial use), fish + sharks/rays within 15 km (40 km if < 8 species),
   WoRMS habitat tags. Output `collector/species.json` is committed; rerun occasionally (GBIF rate-limits: ~1 hour with
   8 workers, resumable via data/species_raw/).
+
+## King tides (2026-10-11)
+
+- `/king-tides/` hub plus `/king-tides/<state>/` for every state with yearly data, each with a `king-tides.ics` calendar of the statewide windows.
+- The math is in `site/kingtides.py`, using the yearly data (`data/year`, this year and next):
+  - A spot's king tide days are the days whose highest tide is in its top 5% for the next 12 months. Nearby days join into one window.
+  - A statewide window is a run of days when at least 25% of the state's spots are in theirs.
+  - Because each spot uses its own predictions, the season is right everywhere: Pacific winter, Southeast fall, Hawaii summer and winter.
+- Station pages show a "Next king tides here" line above the month table. State tide pages link to their king tide page, and the footer links the hub.
+- Official photo projects are listed in `KT_PROGRAMS` in build.py: CA, OR, WA Sea Grant, Hawaii Sea Grant, plus MyCoast for MA/MD/NJ/RI/SC/WA/FL/TX. Re-check these links each fall.
+- No outreach (Mike, 2026-10-11). The pages are meant to earn links on their own, mainly from news "king tides this week" stories and local sites.
