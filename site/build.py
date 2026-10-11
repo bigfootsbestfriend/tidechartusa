@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "14"
+CSS_VER = "15"
 
 
 def ga_tag():
@@ -177,7 +177,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{BASE}"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 20c4 0 4-4 8-4s4 4 8 4 4-4 8-4 4 4 4 4v8H2z"/></svg>{SITE_NAME}</a>
-<nav><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
+<nav><a href="{BASE}saved/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Saved<span data-saved-count></span></a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">
 {body}
@@ -713,7 +713,11 @@ def station_page(st, ctx):
 <p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
 {jump_nav(jumps)}
 <section class="alerts-banner" id="alerts" aria-live="polite" hidden><template class="i-warn">{ico("warn")}</template><template class="i-check">{ico("check")}</template></section>
-<div class="pagetools"><div class="acts-row" id="acts-row" hidden><button type="button" data-save>{ico("star")}<span>Save offline</span></button><button type="button" data-pocket>{ico("print")}<span>Print pocket card</span></button><button type="button" data-install hidden>{ico("phone")}<span>Install app</span></button></div>
+<div class="pagetools"><div class="acts-row" id="acts-row" hidden>
+<button type="button" class="tool save" data-save aria-pressed="false">{ico("star")}<span><b>Save this spot</b><small>Keeps it on this device. Works with no signal.</small></span></button>
+<button type="button" class="tool install" data-install hidden>{ico("phone")}<span><b>Add to home screen</b><small>Opens like an app, one tap away.</small></span></button>
+<button type="button" class="tool" data-pocket>{ico("print")}<span><b>Pocket card</b><small>One printed page with the week's tides.</small></span></button>
+</div>
 <div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div></div>
 
 <section class="today card" id="today">
@@ -983,6 +987,18 @@ Every email has a one-click unsubscribe link, which deletes your subscription. Y
 """
 
 
+SAVED_PAGE = """
+<article class="prose saved-page">
+<h1>Your saved spots</h1>
+<p>Spots you save are kept on this device with a month of tide predictions, so they open even with no signal:
+on the boat, on the beach or in airplane mode. They update themselves whenever you open them with a connection.</p>
+<div class="saved-list" id="saved-list"></div>
+<h2>How to save a spot</h2>
+<ol><li>Open any beach or harbor page.</li><li>Tap <b>Save this spot</b> near the top.</li><li>Come back here any time from <b>Saved</b> at the top of every page.</li></ol>
+<p class="note">Saved spots live in this browser. If you clear your browsing data they'll be removed. Live weather and warnings need a connection.</p>
+</article>
+"""
+
 OFFLINE = """
 <article class="prose">
 <h1>You're offline</h1>
@@ -997,7 +1013,7 @@ OFFLINE = """
 SW = """const VER = "__VER__", BASE = "__BASE__";
 const STATIC = "tc-static-" + VER, PAGES = "tc-pages", SAVED = "tc-saved", MAX_PAGES = 40;
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(STATIC).then((c) => c.addAll([BASE, BASE + "offline/", BASE + "static/icon-192.png"])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(STATIC).then((c) => c.addAll([BASE, BASE + "offline/", BASE + "saved/", BASE + "static/icon-192.png"])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("tc-static-") && k !== STATIC).map((k) => caches.delete(k))))
@@ -1127,6 +1143,8 @@ def main():
         "icons": [{"src": f"{BASE}static/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any maskable"}
                   for n in (192, 512)]}, indent=1))
     write("sw.js", SW.replace("__BASE__", BASE).replace("__VER__", CSS_VER + "-" + built_at.strftime("%Y%m%d")))
+    write("saved/index.html", page("Saved spots", "Your saved tide stations.", "saved/", SAVED_PAGE, scripts=("units.js",),
+                                   extra_head='<meta name="robots" content="noindex">'))
     write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",),
                                      extra_head='<meta name="robots" content="noindex">'))
     write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))

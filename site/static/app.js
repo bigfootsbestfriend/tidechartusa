@@ -7,20 +7,31 @@
   const getSaved = () => { try { return JSON.parse(localStorage.getItem("tc-saved")) || []; } catch (e) { return []; } };
   const setSaved = (list) => { try { localStorage.setItem("tc-saved", JSON.stringify(list)); } catch (e) { /* storage blocked */ } };
 
-  // Saved spots list (home page and the offline page).
+  // Saved spots: the "Saved" link in the header, and the list on the home, saved and offline pages.
   const listBox = document.getElementById("saved-list");
   const paintList = () => {
     const list = getSaved();
+    document.querySelectorAll("[data-nav-saved]").forEach((a) => {
+      a.hidden = !list.length;
+      a.querySelector("[data-saved-count]").textContent = list.length ? ` ${list.length}` : "";
+    });
     const wrap = document.getElementById("saved");
     if (wrap) wrap.hidden = !list.length;
     if (!listBox) return;
-    listBox.innerHTML = list.length ? list.map((s) => `<a class="saved-item" href="${esc(s.path)}"><b>${esc(s.name)}</b>` +
-      `<small>Saved ${new Date(s.at).toLocaleDateString([], { month: "short", day: "numeric" })}</small></a>`).join("")
-      : "<p>No saved spots yet. On any station page, tap <b>Save offline</b>.</p>";
+    listBox.innerHTML = list.length ? list.map((s) => `<div class="saved-item"><a href="${esc(s.path)}"><b>${esc(s.name)}</b>` +
+      `<small>Saved ${new Date(s.at).toLocaleDateString([], { month: "short", day: "numeric" })} · works offline</small></a>` +
+      `<button type="button" class="rm" data-rm="${esc(s.path)}" aria-label="Remove ${esc(s.name)}">×</button></div>`).join("")
+      : `<p>No saved spots yet. Open any beach or harbor and tap <b>Save this spot</b>.</p>`;
   };
   paintList();
+  const unsave = async (path) => {
+    try { await (await caches.open("tc-saved")).delete(path); } catch (e) { /* no Cache API */ }
+    setSaved(getSaved().filter((s) => s.path !== path));
+    paintList();
+  };
+  if (listBox) listBox.addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) unsave(b.dataset.rm); });
 
-  // Station pages: Save offline / Print pocket card / Install app.
+  // Station pages: Save this spot / Add to home screen / Pocket card.
   const row = document.getElementById("acts-row");
   if (row) {
     row.hidden = false;
@@ -30,37 +41,40 @@
     const paintSave = () => {
       const on = getSaved().some((s) => s.path === path);
       saveBtn.setAttribute("aria-pressed", on);
-      saveBtn.querySelector("span").textContent = on ? "Saved offline" : "Save offline";
+      saveBtn.querySelector("b").textContent = on ? (innerWidth <= 520 ? "Saved ✓" : "Saved on this device") : "Save this spot";
+      saveBtn.querySelector("small").innerHTML = on ? `Find it under <u>Saved</u> at the top. Tap to remove.`
+        : "Keeps it on this device. Works with no signal.";
     };
     paintSave();
     saveBtn.addEventListener("click", async () => {
-      let list = getSaved();
-      const on = list.some((s) => s.path === path);
-      try {
-        const c = await caches.open("tc-saved");
-        if (on) await c.delete(path); else await c.add(path);
-      } catch (e) { /* no Cache API: the browser's own cache still helps */ }
-      list = on ? list.filter((s) => s.path !== path) : [{ path, name, at: Date.now() }, ...list].slice(0, 30);
-      setSaved(list);
+      const on = getSaved().some((s) => s.path === path);
+      if (on) { await unsave(path); paintSave(); return; }
+      try { await (await caches.open("tc-saved")).add(path); } catch (e) { /* the browser's own cache still helps */ }
+      setSaved([{ path, name, at: Date.now() }, ...getSaved()].slice(0, 30));
       paintSave();
-      if (!on) toast("Saved for offline. Want next week's tides too? Tap Email me at the top and we'll send them every Thursday.");
+      paintList();
+      toast(`<b>Saved.</b> It now opens with no signal. Find it any time under <a href="${base}saved/">★ Saved</a> at the top of every page.`, 7000);
     });
     row.querySelector("[data-pocket]").addEventListener("click", pocket);
   }
 
-  // Install prompt (Chrome/Android/desktop); iPhone users get a hint instead.
+  // "Add to home screen": shown only where it can work. Chrome, Edge and Android offer a real install
+  // prompt; iPhone and iPad need Share → Add to Home Screen, so they get the steps. Hidden once installed.
   let deferred = null;
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const installBtns = () => document.querySelectorAll("[data-install]");
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferred = e;
-    document.querySelectorAll("[data-install]").forEach((b) => (b.hidden = false));
+    if (!standalone) installBtns().forEach((b) => (b.hidden = false));
   });
-  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (ios && !standalone) document.querySelectorAll("[data-install]").forEach((b) => (b.hidden = false));
-  document.querySelectorAll("[data-install]").forEach((b) => b.addEventListener("click", async () => {
-    if (deferred) { deferred.prompt(); await deferred.userChoice; deferred = null; b.hidden = true; }
-    else toast("On iPhone: tap the Share button, then “Add to Home Screen”.");
+  window.addEventListener("appinstalled", () => installBtns().forEach((b) => (b.hidden = true)));
+  if (ios && !standalone) installBtns().forEach((b) => (b.hidden = false));
+  installBtns().forEach((b) => b.addEventListener("click", async () => {
+    if (deferred) { deferred.prompt(); await deferred.userChoice; deferred = null; b.hidden = true; return; }
+    toast(`<b>Add to your home screen:</b> tap the Share button <svg class="ico" viewBox="0 0 24 24" aria-label="Share"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg> at the bottom of Safari, ` +
+      `scroll down and tap <b>Add to Home Screen</b>. Tide Chart USA then opens like an app.`, 12000);
   }));
 
   // Offline notice.
@@ -78,12 +92,14 @@
   addEventListener("offline", notice);
   notice();
 
-  function toast(msg) {
+  function toast(html, ms = 4500) {
+    document.querySelectorAll(".toast").forEach((t) => t.remove());
     const t = document.createElement("div");
     t.className = "toast";
-    t.textContent = msg;
+    t.innerHTML = `<span>${html}</span><button type="button" aria-label="Close">×</button>`;
+    t.querySelector("button").addEventListener("click", () => t.remove());
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 4500);
+    setTimeout(() => t.remove(), ms);
   }
 
   // Pocket card: the next 7 days on one small printable page, built from what's on screen

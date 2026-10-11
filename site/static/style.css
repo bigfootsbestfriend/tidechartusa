@@ -267,19 +267,35 @@ details.radio summary svg.ico { margin-right: 6px; }
 /* Page tools: save offline, pocket card, install, units */
 .pagetools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 12px; }
 .pagetools .units { margin: 0; }
-.acts-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.acts-row button { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: .85rem; font-weight: 600; padding: 5px 11px;
-  border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
-.acts-row button svg.ico { color: var(--sea); }
-.acts-row button[aria-pressed="true"] { background: var(--foam); border-color: var(--sea-2); }
-.acts-row button[aria-pressed="true"] svg.ico { fill: var(--sea); }
+.acts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; flex: 1 1 100%; }
+.tool { display: flex; align-items: flex-start; gap: 10px; text-align: left; font: inherit; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.tool svg.ico { width: 22px; height: 22px; flex: 0 0 auto; margin-top: 1px; color: var(--sea); }
+.tool b { display: block; font-size: .95rem; }
+.tool small { display: block; color: var(--muted); font-size: .8rem; line-height: 1.3; margin-top: 1px; }
+.tool:hover { border-color: var(--sea-2); }
+.tool.save[aria-pressed="true"] { background: var(--foam); border-color: var(--sea-2); }
+.tool.save[aria-pressed="true"] svg.ico { fill: #f2b01e; color: #c98a00; }
+.tool.install { background: var(--sea); border-color: var(--sea); color: var(--card); }
+.tool.install svg.ico, .tool.install small { color: var(--card); opacity: .9; }
+@media (max-width: 520px) {
+  .acts-row { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+  .tool { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 9px 6px; }
+  .tool b { font-size: .82rem; line-height: 1.2; }
+  .tool small { display: none; }
+}
+.pagetools .units { margin-left: auto; }
+header.top nav a.nav-saved { display: inline-flex; align-items: center; gap: 4px; }
+header.top nav a.nav-saved svg.ico { fill: #f2b01e; stroke: #f2b01e; }
 .saved-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.saved-item { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); text-decoration: none; }
+.saved-item { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.saved-item a { flex: 1; padding: 12px 14px; color: var(--ink); text-decoration: none; }
 .saved-item small { display: block; color: var(--muted); }
+.saved-item .rm { font: inherit; font-size: 1.3rem; padding: 8px 14px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 h2.sec svg.ico { color: var(--sea); margin-right: 6px; }
 .offline-note { margin: 10px 0; padding: 10px 14px; border-radius: 10px; background: #fff3cd; color: #5c4400; font-size: .92rem; }
-.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: min(92vw, 480px); z-index: 50;
-  padding: 12px 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: .92rem; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(92vw, 480px); z-index: 50;
+  display: flex; gap: 8px; align-items: flex-start; padding: 12px 8px 12px 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: .92rem; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
 #pocket { display: none; }
 @media print {
   .pagetools { display: none !important; }
@@ -343,3 +359,6 @@ nav.jump a[href="#emails"] { border-color: var(--sea-2); color: var(--sea); }
 .signup-bar .go { font: inherit; font-weight: 700; padding: 8px 14px; border: 0; border-radius: 10px; background: var(--sea-2); color: #fff; cursor: pointer; white-space: nowrap; }
 .signup-bar .x { font: inherit; font-size: 1.4rem; line-height: 1; padding: 4px 8px; border: 0; background: none; color: inherit; opacity: .7; cursor: pointer; }
 @media print { .signup-bar, .card.signup, .signup-band { display: none !important; } }
+.toast span { flex: 1; } .toast a { color: #7fd3e8; } .toast svg.ico { vertical-align: -0.2em; }
+.toast button { font: inherit; font-size: 1.3rem; line-height: 1; padding: 0 6px; border: 0; background: none; color: inherit; opacity: .7; cursor: pointer; }
+@media (max-width: 420px) { header.top nav a[href$="how-to-read-a-tide-chart/"] { display: none; } }
