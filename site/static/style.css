@@ -384,3 +384,32 @@ details.embed summary svg.ico { margin-right: 6px; }
 details.embed textarea { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--sea); color: var(--card); cursor: pointer; }
 @media print { details.embed { display: none !important; } }
+/* Around this spot (OpenStreetMap places) */
+.card.around { margin-top: 24px; }
+.card.around h2 { margin-top: 0; }
+.pl-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 22px; }
+.pl-col h3 { font-size: .95rem; margin: 8px 0 4px; display: flex; align-items: center; gap: 6px; }
+.pl-col h3 svg.ico { color: var(--sea); }
+.pl-col ul { list-style: none; padding: 0; margin: 0; }
+.pl-col li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+.pl-col li span { color: var(--muted); font-size: .88rem; white-space: nowrap; }
+@media print { .card.around { display: none !important; } }
+/* Conditions reports and accuracy */
+.card.reports { margin-top: 16px; }
+.card.reports h2 { margin-top: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { font: inherit; font-size: .88rem; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--card); }
+#rp-note { width: 100%; box-sizing: border-box; font: inherit; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.rp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rp-send { font: inherit; font-weight: 700; padding: 9px 16px; border: 0; border-radius: 10px; background: var(--sea); color: var(--card); cursor: pointer; }
+.card.reports h3 { font-size: 1rem; margin: 16px 0 6px; }
+.rp-list { list-style: none; padding: 0; margin: 0; }
+.rp-list li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rp-list .when { color: var(--muted); font-size: .85rem; margin-right: 4px; }
+.rp-list .tag { font-size: .82rem; padding: 2px 8px; border-radius: 999px; background: var(--foam); color: var(--sea); }
+.rp-list q { flex-basis: 100%; color: var(--ink); }
+.acc { font-size: .9rem; color: var(--muted); margin: 8px 0 0; }
+.acc button { font: inherit; font-size: .85rem; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.acc button:disabled { opacity: .5; cursor: default; }
+@media print { .card.reports, .acc { display: none !important; } }

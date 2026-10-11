@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "21"
+CSS_VER = "23"
 
 
 def ga_tag():
@@ -509,6 +509,29 @@ def radio_block(nwr, county=None):
             f'Local harbors and bridges may use others, so check your chart.</p></details>')
 
 
+REPORT_CHIPS = [("clear", "Clear water"), ("murky", "Murky"), ("calm", "Calm"), ("choppy", "Choppy"), ("rough", "Rough"),
+                ("windy", "Windy"), ("crowded", "Crowded"), ("quiet", "Quiet"), ("fish-biting", "Fish biting"),
+                ("slow-fishing", "Slow fishing"), ("great-tidepools", "Great tide pools"), ("higher-than-predicted", "Water higher than predicted"),
+                ("lower-than-predicted", "Water lower than predicted"), ("seaweed", "Lots of seaweed"), ("jellyfish", "Jellyfish")]
+
+
+def reports_card(st, name):
+    if not ALERTS_API:
+        return ""
+    chips = "".join(f'<button type="button" class="chip" data-chip="{k}" aria-pressed="false">{esc(t)}</button>' for k, t in REPORT_CHIPS)
+    return f"""
+<section class="card reports" id="reports" data-api="{ALERTS_API}" data-station="{esc(st["id"])}" data-labels='{esc(json.dumps(dict(REPORT_CHIPS)))}'>
+<h2>{ico("chat")}How was it out there?</h2>
+<p class="sub">Been to {esc(name)} recently? Tap what you saw to help the next person. No account needed.</p>
+<div class="chips">{chips}</div>
+<textarea id="rp-note" maxlength="280" rows="2" placeholder="Anything else? (optional, no links)"></textarea>
+<p class="rp-row"><button type="button" class="rp-send" data-rp-send>Share my report</button> <span id="rp-msg" class="note"></span></p>
+<h3>Recent reports</h3>
+<ul class="rp-list" id="rp-list"><li class="note">No reports in the last 30 days yet. Be the first.</li></ul>
+<p class="note">Reports are from visitors and may be wrong. Inappropriate ones are removed.</p>
+</section>"""
+
+
 def signup_card(st, name, ctx):
     if not ALERTS_API:
         return ""
@@ -715,7 +738,10 @@ def station_page(st, ctx):
     jumps += [("Currents", "current", "currents")] if cur_html else []
     jumps += [("Fishing", "fish", "fishing")]
     jumps += [("Low tides", "low", "lows")] if dl_html else []
-    jumps += [("Month", "cal", "month"), ("Radio", "radio", "radio")]
+    jumps += [("Month", "cal", "month")]
+    jumps += [("Nearby", "pin", "around")] if ctx.get("places") else []
+    jumps += [("Radio", "radio", "radio")]
+    jumps += [("Reports", "chat", "reports")] if ALERTS_API else []
     body = f"""
 <article class="station">
 <h1>{esc(name)} tide chart</h1>
@@ -726,6 +752,7 @@ def station_page(st, ctx):
 <button type="button" class="tool save" data-save aria-pressed="false">{ico("star")}<span><b>Favorite</b><small>One tap away under Favorites, and works with no signal.</small></span></button>
 <button type="button" class="tool install" data-install hidden>{ico("phone")}<span><b>Add to home screen</b><small>Opens like an app, one tap away.</small></span></button>
 <button type="button" class="tool" data-pocket>{ico("print")}<span><b>Pocket card</b><small>One printed page with the week's tides.</small></span></button>
+<button type="button" class="tool" data-share>{ico("share")}<span><b>Share</b><small>Send today's tides to a friend.</small></span></button>
 </div>
 <div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div></div>
 
@@ -735,6 +762,7 @@ def station_page(st, ctx):
 <div id="chart">{chart}</div>
 <ul class="tlist" id="tlist">{today_rows}</ul>
 <div class="dayextra" id="dayextra"></div>
+<p class="acc" id="acc" hidden>Were today's predicted times right where you were? <button type="button" data-acc="1">👍 Spot on</button> <button type="button" data-acc="0">👎 Off</button> <span id="acc-msg"></span></p>
 <p class="sunline" id="sunline">Sunrise {clock(rise) if rise else '—'} · Sunset {clock(sset) if sset else '—'} · {moon_cell(today)}</p>
 </section>
 
@@ -755,6 +783,8 @@ def station_page(st, ctx):
 
 {live_section(st, name, ctx)}
 
+{reports_card(st, name)}
+
 <div class="tabs" data-tabs>
 {tab("This week", "week", week_html)}
 {tab("Currents", "current", cur_html)}
@@ -763,6 +793,8 @@ def station_page(st, ctx):
 {tab("Month", "cal", month_html, "month-tab")}
 </div>
 
+
+{places_section(name, ctx.get("places"))}
 
 <h2>About the tides at {esc(name)}</h2>
 {writeup(st, name, f, tz)}
@@ -785,7 +817,13 @@ def station_page(st, ctx):
 <script type="application/json" id="tide-data">{json.dumps(data, separators=(",", ":"))}</script>
 """
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"])]
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js"))
+    place_ld = {"@context": "https://schema.org", "@type": "Place", "name": f"{name} tide station",
+                "geo": {"@type": "GeoCoordinates", "latitude": round(st["lat"], 5), "longitude": round(st["lng"], 5)},
+                "address": {"@type": "PostalAddress", "addressRegion": state, "addressCountry": "US",
+                            **({"addressLocality": town[0]} if town else {})},
+                "url": SITE_URL + "/" + st["path"]}
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js", "community.js"),
+                extra_head='<script type="application/ld+json">' + json.dumps(place_ld) + "</script>")
 
 
 # ---------- other pages ----------
@@ -938,6 +976,30 @@ def embed_code(st):
             f'<p style="font-size:12px;margin:4px 0"><a href="{SITE_URL}/{st["path"]}">{name} tide chart</a> by Tide Chart USA</p>')
 
 
+PLACE_KINDS = [("beach", "beach", "Beaches"), ("ramp", "ramp", "Boat ramps"), ("marina", "anchor", "Marinas"),
+               ("pier", "pier", "Fishing piers and docks")]
+
+
+def places_section(name, places, heading=None):
+    """Beaches, boat ramps, marinas and piers within a few miles (OpenStreetMap)."""
+    if not places:
+        return ""
+    cols = []
+    for kind, icon, label in PLACE_KINDS:
+        items = [p for p in places if p[0] == kind]
+        if not items:
+            continue
+        lis = "".join(f'<li><a href="https://www.google.com/maps/search/?api=1&amp;query={la},{lo}" rel="nofollow noopener" target="_blank">'
+                      f'{esc(n) if n else ("Boat ramp" if kind == "ramp" else "Fishing spot" if kind == "pier" else label[:-1])}</a> <span>{d:.1f} mi</span></li>'
+                      for kind_, n, la, lo, d in items)
+        cols.append(f'<div class="pl-col"><h3>{ico(icon)}{label}</h3><ul>{lis}</ul></div>')
+    if not cols:
+        return ""
+    return (f'<section class="card around" id="around"><h2>{ico("pin")}{heading or f"Around {esc(name)}"}</h2>'
+            f'<div class="pl-cols">{"".join(cols)}</div><p class="note">Distances from the tide station. Places from '
+            f'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>; links open in Google Maps.</p></section>')
+
+
 def town_path(name, st):
     return f"tides-near/{slugify(name)}-{st.lower()}/"
 
@@ -987,6 +1049,7 @@ Tap a station for its full chart, the week ahead, currents, fishing times and th
 <div class="spots">{"".join(cards)}</div>
 <p>{" ".join(facts)}</p>
 {cta}
+{places_section(tname, first.get("_places"), f"Beaches, ramps and marinas near {esc(tname)}")}
 {f'<h2>Nearby towns</h2><ul class="near">{links}</ul>' if links else ""}
 <p><a href="{BASE}tides/{slugify(state)}/">All {esc(state)} tide stations</a></p>
 """
@@ -1048,6 +1111,13 @@ ICON = {
     "warn": '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
     "check": '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
     "code": '<path d="m8 8-5 4 5 4M16 8l5 4-5 4M13.5 5l-3 14"/>',
+    "beach": '<path d="M3 20h18"/><path d="M12 20 8.5 8"/><path d="M4 9.5a8 8 0 0 1 15-3.5z"/>',
+    "ramp": '<path d="M3 19 21 9v10z"/><path d="M8 13l3-1.5"/>',
+    "anchor": '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13a7 7 0 0 0 14 0M8 11h8"/>',
+    "pier": '<path d="M3 9h18M6 9v11M12 9v11M18 9v11"/><path d="M3 20c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1"/>',
+    "pin": '<path d="M12 21s-7-6.5-7-11.5a7 7 0 0 1 14 0C19 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    "chat": '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    "share": '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 
@@ -1207,6 +1277,10 @@ PRIVACY = """
 <p>When you sign up we store your email address, the station you picked and which emails you want. We use them only to send those emails.
 The list is kept in our Cloudflare database and the emails are sent through Resend. We never sell or share it.
 Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@tidechartusa.com to be removed.</p>
+<h2>Conditions reports, votes and favorites</h2>
+<p>Conditions reports are public and anonymous: we show the tags and note you choose, and the time. Accuracy votes and
+favorites are stored only as totals per station. To stop spam and double votes we keep a scrambled code made from your
+IP address that changes every day and can't be turned back into the address. Your list of favorites stays on your own device.</p>
 {ANALYTICS_TEXT}
 </article>
 """
@@ -1345,6 +1419,7 @@ def main():
     zones = load(ROOT / "collector" / "marine_zones.json", {})
     radios = load(DATA / "nwr.json", {})
     counties = load(ROOT / "collector" / "county_zones.json", {})
+    nearby = load(ROOT / "collector" / "places.json", {})
     towns = load(ROOT / "collector" / "towns.json", {"stations": {}, "towns": {}})
     for st_ in stations:
         t = towns["stations"].get(st_["id"])
@@ -1381,7 +1456,7 @@ def main():
                "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
                "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None,
                "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None,
-               "years": [y for y in years if (YEAR_DIR / str(y) / f"{s['id']}.json").exists()]}
+               "places": nearby.get(s["id"]), "years": [y for y in years if (YEAR_DIR / str(y) / f"{s['id']}.json").exists()]}
         write(s["path"] + "index.html", station_page(s, ctx))
         for y in ctx["years"]:
             yp = year_page(s, y, json.loads((YEAR_DIR / str(y) / f"{s['id']}.json").read_text()), tz)
@@ -1390,6 +1465,7 @@ def main():
                 year_pages.append(yp[0])
         if s["id"] in POPULAR:
             popular[s["id"]] = (s, tz, events, today)
+        s["_places"] = ctx["places"]
         built_data[s["id"]] = (s, tz, events, today)
         write(f"embed/{s['id']}/index.html", embed_page(s, events, tz))
         groups.setdefault(s["state"], []).append(s)
@@ -1455,7 +1531,8 @@ def main():
         urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
                [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-              + "".join(f"<url><loc>{SITE_URL}/{u}</loc></url>" for u in urls) + "</urlset>")
+              + "".join(f"<url><loc>{SITE_URL}/{u}</loc><lastmod>{built_at.date().isoformat()}</lastmod></url>" for u in urls)
+              + "</urlset>")
         write("robots.txt", f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
     else:
         write("robots.txt", "User-agent: *\nAllow: /\n")

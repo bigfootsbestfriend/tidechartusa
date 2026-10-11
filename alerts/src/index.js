@@ -6,6 +6,11 @@
 //   POST /unsubscribe   JSON {t} from <site>/alerts/?unsub=..., or the one-click List-Unsubscribe POST (?t=...)
 //   GET  /admin/subs    (Bearer ADMIN_TOKEN) every subscription, for send.py
 //   POST /admin/sent    (Bearer ADMIN_TOKEN) JSON [[email, alertId], ...] warnings that were emailed
+//   GET  /community?station=ID   recent conditions reports + accuracy votes + favorite count
+//   POST /report        JSON {station, chips[], note}: a visitor's conditions report (emailed to the owner)
+//   POST /vote          JSON {station, up}: "Was this accurate?"
+//   POST /fav           JSON {station, on}: favorite count up or down
+//   GET  /admin/remove?t=...      signed link in the owner's email: deletes a report
 //
 // Links in emails go to the site's own /alerts/ page, which POSTs the token here, so link scanners
 // that open URLs can't confirm or unsubscribe anyone.
@@ -22,6 +27,11 @@ export default {
       if (url.pathname === "/subscribe" && req.method === "POST") return await subscribe(req, env);
       if (url.pathname === "/confirm" && req.method === "POST") return cors(req, env, await confirm(req, env));
       if (url.pathname === "/unsubscribe" && req.method === "POST") return cors(req, env, await unsubscribe(req, env, url));
+      if (url.pathname === "/community" && req.method === "GET") return cors(req, env, await community(env, url));
+      if (url.pathname === "/report" && req.method === "POST") return cors(req, env, await report(req, env));
+      if (url.pathname === "/vote" && req.method === "POST") return cors(req, env, await vote(req, env));
+      if (url.pathname === "/fav" && req.method === "POST") return cors(req, env, await fav(req, env));
+      if (url.pathname === "/admin/remove" && req.method === "GET") return await removeReport(env, url);
       if (url.pathname.startsWith("/admin/")) return await admin(req, env, url);
       return new Response("Not found", { status: 404 });
     } catch (err) {
@@ -37,7 +47,7 @@ const back = (env, state) => Response.redirect(`${env.SITE}/alerts/#${state}`, 3
 function cors(req, env, res) {
   if (req.headers.get("origin") === env.SITE) {
     res.headers.set("access-control-allow-origin", env.SITE);
-    res.headers.set("access-control-allow-methods", "POST, OPTIONS");
+    res.headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
     res.headers.set("access-control-allow-headers", "content-type");
     res.headers.set("vary", "origin");
   }
@@ -94,6 +104,89 @@ async function unsubscribe(req, env, url) {
   if (station === "*") await env.DB.prepare("DELETE FROM subs WHERE email = ?1").bind(email).run();
   else await env.DB.prepare("DELETE FROM subs WHERE email = ?1 AND station = ?2").bind(email, station).run();
   return json({ state: "unsubscribed", station });
+}
+
+// ---------- community: reports, votes, favorite counts ----------
+
+const CHIPS = ["clear", "murky", "calm", "choppy", "rough", "windy", "crowded", "quiet", "fish-biting", "slow-fishing",
+  "great-tidepools", "higher-than-predicted", "lower-than-predicted", "seaweed", "jellyfish"];
+
+// Salted, daily-rotating hash of the visitor's IP: lets us rate-limit without storing who anyone is.
+async function who(req, env, extra = "") {
+  const ip = req.headers.get("cf-connecting-ip") || "";
+  const day = new Date().toISOString().slice(0, 10);
+  const h = await crypto.subtle.digest("SHA-256", enc.encode(`${env.TOKEN_SECRET}|${ip}|${day}|${extra}`));
+  return b64(h).slice(0, 22);
+}
+
+async function community(env, url) {
+  const station = String(url.searchParams.get("station") || "").toUpperCase();
+  if (!STATION.test(station)) return json({ error: "station" }, 400);
+  const reports = (await env.DB.prepare(
+    "SELECT id, at, chips, note FROM reports WHERE station = ?1 AND at > datetime('now', '-30 days') ORDER BY at DESC LIMIT 12",
+  ).bind(station).all()).results;
+  const c = await env.DB.prepare("SELECT up, down, favs FROM counts WHERE station = ?1").bind(station).first();
+  const res = json({ reports, up: c ? c.up : 0, down: c ? c.down : 0, favs: c ? c.favs : 0 });
+  res.headers.set("cache-control", "public, max-age=60");
+  return res;
+}
+
+async function report(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const station = String(b.station || "").toUpperCase();
+  if (!STATION.test(station)) return json({ state: "invalid" }, 400);
+  const chips = (Array.isArray(b.chips) ? b.chips : []).filter((c) => CHIPS.includes(c)).slice(0, 6);
+  let note = String(b.note || "").replace(/\s+/g, " ").trim().slice(0, 280);
+  // No links or contact details: those are almost always spam.
+  if (/https?:|www\.|\.(com|net|org|io|ru|cn)\b|@\w|\d{3}[\s.-]\d{3}[\s.-]\d{4}/i.test(note)) return json({ state: "nolinks" }, 400);
+  if (!chips.length && note.length < 3) return json({ state: "empty" }, 400);
+  const w = await who(req, env);
+  const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM reports WHERE who = ?1 AND at > datetime('now', '-1 hour')").bind(w).first();
+  if (recent && recent.n >= 3) return json({ state: "slow" }, 429);
+  const r = await env.DB.prepare("INSERT INTO reports (station, chips, note, who) VALUES (?1, ?2, ?3, ?4) RETURNING id")
+    .bind(station, chips.join(","), note, w).first();
+  // Tell the owner, with a one-click delete link, so spam doesn't sit on the site.
+  if (env.OWNER_EMAIL && env.RESEND_API_KEY) {
+    const del = `${new URL(req.url).origin}/admin/remove?t=${encodeURIComponent(await sign(env, `r|${r.id}`))}`;
+    await send(env, { from: env.FROM, to: [env.OWNER_EMAIL], subject: `New conditions report: station ${station}`,
+      html: `<p><b>${esc(chips.join(", ") || "(no tags)")}</b></p><p>${esc(note) || "(no note)"}</p>` +
+        `<p><a href="${env.SITE}/embed/${station}/">Station</a> · <a href="${del}">Delete this report</a></p>` }).catch(() => {});
+  }
+  return json({ state: "ok" });
+}
+
+async function removeReport(env, url) {
+  const p = await verify(env, String(url.searchParams.get("t") || ""));
+  if (!p || p[0] !== "r") return new Response("That link didn't work.", { status: 400 });
+  await env.DB.prepare("DELETE FROM reports WHERE id = ?1").bind(Number(p[1])).run();
+  return new Response("Report deleted.", { headers: { "content-type": "text/plain; charset=utf-8" } });
+}
+
+async function vote(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const station = String(b.station || "").toUpperCase();
+  if (!STATION.test(station)) return json({ state: "invalid" }, 400);
+  const key = await who(req, env, `v|${station}`);
+  const fresh = await env.DB.prepare("INSERT OR IGNORE INTO seen (key) VALUES (?1)").bind(key).run();
+  if (fresh.meta.changes) {
+    const col = b.up ? "up" : "down";
+    await env.DB.prepare(`INSERT INTO counts (station, ${col}) VALUES (?1, 1) ON CONFLICT (station) DO UPDATE SET ${col} = ${col} + 1`).bind(station).run();
+  }
+  await env.DB.prepare("DELETE FROM seen WHERE at < datetime('now', '-2 days')").run();
+  return json({ state: "ok" });
+}
+
+async function fav(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const station = String(b.station || "").toUpperCase();
+  if (!STATION.test(station)) return json({ state: "invalid" }, 400);
+  const key = await who(req, env, `f|${station}|${b.on ? 1 : 0}`);
+  const fresh = await env.DB.prepare("INSERT OR IGNORE INTO seen (key) VALUES (?1)").bind(key).run();
+  if (fresh.meta.changes) {
+    if (b.on) await env.DB.prepare("INSERT INTO counts (station, favs) VALUES (?1, 1) ON CONFLICT (station) DO UPDATE SET favs = favs + 1").bind(station).run();
+    else await env.DB.prepare("UPDATE counts SET favs = MAX(0, favs - 1) WHERE station = ?1").bind(station).run();
+  }
+  return json({ state: "ok" });
 }
 
 async function admin(req, env, url) {

@@ -15,3 +15,25 @@ CREATE TABLE IF NOT EXISTS sent (
   at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (email, alert)
 );
+-- Visitor conditions reports ("How was it out there?"), shown on station pages.
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  station TEXT NOT NULL,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  chips TEXT NOT NULL DEFAULT '',   -- comma-separated from a fixed list
+  note TEXT NOT NULL DEFAULT '',
+  who TEXT NOT NULL                 -- salted hash of IP + day, only for rate limiting
+);
+CREATE INDEX IF NOT EXISTS reports_station ON reports (station, at);
+-- One-tap counters per station: accuracy votes and favorites. Totals only, nothing about who.
+CREATE TABLE IF NOT EXISTS counts (
+  station TEXT PRIMARY KEY,
+  up INTEGER NOT NULL DEFAULT 0,
+  down INTEGER NOT NULL DEFAULT 0,
+  favs INTEGER NOT NULL DEFAULT 0
+);
+-- Who already voted on a station today (salted hash), so one person can't stuff the counts.
+CREATE TABLE IF NOT EXISTS seen (
+  key TEXT PRIMARY KEY,
+  at TEXT NOT NULL DEFAULT (datetime('now'))
+);
