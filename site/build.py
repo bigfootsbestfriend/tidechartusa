@@ -34,6 +34,8 @@ LAUNCHED = False
 SITE_URL = os.environ.get("SITE_URL", "https://bigfootsbestfriend.github.io/tidechartusa").rstrip("/")
 BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
 SITE_NAME = "Tide Chart USA"
+# Google Analytics 4 measurement ID (G-...). Empty = no analytics tag.
+GA_ID = os.environ.get("GA_ID", "")
 # Email signups (alerts/ Worker). Empty hides every signup form; set once Resend is verified.
 ALERTS_API = os.environ.get("ALERTS_API", "")
 
@@ -124,6 +126,14 @@ def day_label(d, short=False):
 CSS_VER = "12"
 
 
+def ga_tag():
+    if not GA_ID:
+        return ""
+    return (f'\n<script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>'
+            f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
+            f"gtag('js',new Date());gtag('config','{GA_ID}');</script>")
+
+
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
     url = SITE_URL + "/" + path
     robots = "" if LAUNCHED else '<meta name="robots" content="noindex, nofollow">'
@@ -156,6 +166,10 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:url" content="{esc(url)}">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="{SITE_NAME}">
+<meta property="og:image" content="{SITE_URL}/static/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">{ga_tag()}
 {ld}{extra_head}
 </head>
 <body>
@@ -927,6 +941,13 @@ We download them every night, so each page always shows the next month. Sunrise,
 </article>
 """
 
+ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits and see which pages are useful. It sets cookies "
+                  "and collects things like your approximate location, device and the pages you view, not your name or email. "
+                  "You can opt out with <a href=\"https://tools.google.com/dlpage/gaoptout\">Google's opt-out add-on</a> or by blocking cookies. "
+                  "If we add advertising, this page will be updated to name those partners and explain your choices.</p>") if GA_ID else \
+                 ("<p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, "
+                  "and this page will be updated to name them and explain your choices.</p>")
+
 PRIVACY = """
 <article class="prose">
 <h1>Privacy</h1>
@@ -935,7 +956,7 @@ PRIVACY = """
 <p>When you sign up we store your email address, the station you picked and which emails you want. We use them only to send those emails.
 The list is kept in our Cloudflare database and the emails are sent through Resend. We never sell or share it.
 Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@tidechartusa.com to be removed.</p>
-<p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, and this page will be updated to name them and explain your choices.</p>
+{ANALYTICS_TEXT}
 </article>
 """
 
@@ -1096,7 +1117,7 @@ def main():
     if ALERTS_API:
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
                                         ALERTS_PAGE.format(base=BASE, api=ALERTS_API)))
-    write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY))
+    write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live), separators=(",", ":")))
