@@ -34,11 +34,13 @@ jobs:
       - name: Download this year and next
         run: |
           Y=$(date -u +%Y)
-          python3 collector/year.py $Y
-          python3 collector/year.py $((Y + 1))
+          # Time-boxed so the job always reaches the cache save; anything missing is picked up next run.
+          python3 collector/year.py $Y --minutes 45
+          python3 collector/year.py $((Y + 1)) --minutes 45
           # Drop years that are over.
           for d in data/year/*; do [ "$(basename $d)" -lt "$Y" ] && rm -rf "$d"; done; true
       - uses: actions/cache/save@v4
+        if: always()
         with:
           path: data/year
           key: year-data-${{ github.run_id }}
