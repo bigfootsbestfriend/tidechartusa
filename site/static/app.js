@@ -1,5 +1,5 @@
 // Works on every page: saved spots for offline use, the install button, an offline notice, and the
-// printable pocket card on station pages. The service worker (sw.js) does the actual offline caching.
+// (the printable pocket card is in pocket.js). The service worker (sw.js) does the actual offline caching.
 (() => {
   const base = document.querySelector('link[rel="icon"]').getAttribute("href").replace(/static\/favicon\.svg$/, "");
   if ("serviceWorker" in navigator) navigator.serviceWorker.register(base + "sw.js").catch(() => {});
@@ -55,7 +55,6 @@
       paintList();
       toast(`<b>Added to your favorites.</b> It's one tap away under <a href="${base}favorites/">★ Favorites</a> at the top of every page, and opens even with no signal.`, 7000);
     });
-    row.querySelector("[data-pocket]").addEventListener("click", pocket);
   }
 
   // "Add to home screen": shown only where it can work. Chrome, Edge and Android offer a real install
@@ -102,35 +101,4 @@
     setTimeout(() => t.remove(), ms);
   }
 
-  // Pocket card: the next 7 days on one small printable page, built from what's on screen
-  // (so it follows the feet/meters and 12/24h choice).
-  function pocket() {
-    const txt = (el) => (el ? el.textContent.replace(/\s+/g, " ").trim() : "");
-    const rowFor = (sel, day) => document.querySelector(`${sel} tr[data-day="${day}"]`);
-    const week = [...document.querySelectorAll("table.week:not(.currents):not(.fishing) tbody tr")].filter((r) => !r.hidden).slice(0, 7);
-    const rows = week.map((r) => {
-      const day = r.dataset.day;
-      const tides = [...r.cells[1].querySelectorAll(".ev")].map((e) => esc(txt(e))).join("<br>") || esc(txt(r.cells[1]));
-      const fish = rowFor("table.fishing", day);
-      const cur = rowFor("table.currents", day);
-      const slack = cur ? [...cur.querySelectorAll(".ev.slack")].map((e) => esc(txt(e).replace(/^Slack /, ""))).join(", ") : "";
-      return `<tr><th>${esc(txt(r.cells[0]))}</th><td>${tides}</td><td>${esc(txt(r.cells[2]))}</td>` +
-        `<td>${fish ? esc(txt(fish.cells[1])) : ""}</td>${document.querySelector("table.currents") ? `<td>${slack}</td>` : ""}</tr>`;
-    }).join("");
-    const tx = [...document.querySelectorAll(".radio-tx li")].slice(0, 2).map((li) => esc(txt(li))).join("<br>");
-    const same = [...document.querySelectorAll(".radio .note b")].map(txt)[0];
-    const card = document.createElement("div");
-    card.id = "pocket";
-    card.innerHTML = `<h1>${esc(txt(document.querySelector("h1")).replace(/ tide chart$/, ""))}</h1>
-      <p class="pk-sub">${esc(txt(document.querySelector(".station .sub")))}</p>
-      <table><thead><tr><th>Day</th><th>Tides</th><th>Sun</th><th>Fishing</th>${document.querySelector("table.currents") ? "<th>Slack water</th>" : ""}</tr></thead><tbody>${rows}</tbody></table>
-      <div class="pk-radio"><b>Radio</b> · VHF 16 distress and calling · 22A Coast Guard · 9 boater calling` +
-      (tx ? `<br><b>Weather radio</b> ${tx}` : "") + (same ? `<br><b>Alert radio county code</b> ${esc(same)}` : "") + `</div>
-      <p class="pk-foot">tidechartusa.com · printed ${new Date().toLocaleDateString()} · NOAA predictions, not for navigation.</p>`;
-    document.body.appendChild(card);
-    document.body.classList.add("print-pocket");
-    const done = () => { document.body.classList.remove("print-pocket"); card.remove(); removeEventListener("afterprint", done); };
-    addEventListener("afterprint", done);
-    window.print();
-  }
 })();

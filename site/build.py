@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "24"
+CSS_VER = "25"
 
 
 def ga_tag():
@@ -708,8 +708,8 @@ def station_page(st, ctx):
     # Trip planner: fishing score and major periods for two weeks, and the nearest current predictions.
     fish = {}
     for d in days[start:start + 14]:
-        sc, majors, _ = fish_day(st, d, tz, f, sun_by_day)
-        fish[d.isoformat()] = [sc, [int(m.timestamp()) for m in majors]]
+        sc, majors, minors = fish_day(st, d, tz, f, sun_by_day)
+        fish[d.isoformat()] = [sc, [int(m.timestamp()) for m in majors], [int(m.timestamp()) for m in minors]]
     data["fish"] = fish
     if ctx.get("cur"):
         meta, cdist, cev = ctx["cur"]
@@ -755,8 +755,23 @@ def station_page(st, ctx):
 <div class="pagetools"><div class="acts-row" id="acts-row" hidden>
 <button type="button" class="tool save" data-save aria-pressed="false">{ico("star")}<span><b>Favorite</b><small>One tap away under Favorites, and works with no signal.</small></span></button>
 <button type="button" class="tool install" data-install hidden>{ico("phone")}<span><b>Add to home screen</b><small>Opens like an app, one tap away.</small></span></button>
-<button type="button" class="tool" data-pocket>{ico("print")}<span><b>Pocket card</b><small>One printed page with the week's tides.</small></span></button>
+<button type="button" class="tool" data-pocket aria-expanded="false">{ico("print")}<span><b>Pocket card</b><small>A printed card for fishing, boating or the beach.</small></span></button>
 <button type="button" class="tool" data-share>{ico("share")}<span><b>Share</b><small>Send today's tides to a friend.</small></span></button>
+</div>
+<div class="pocket-opts" id="pocket-opts" hidden>
+<h3>{ico("print")}Make a pocket card</h3>
+<p class="po-label">What's it for?</p>
+<div class="po-acts">
+<button type="button" data-pk="general" aria-pressed="true">{ico("chart")}Everyday</button>
+<button type="button" data-pk="fishing" aria-pressed="false">{ico("fish")}Fishing</button>
+<button type="button" data-pk="boating" aria-pressed="false">{ico("kayak")}Boating &amp; paddling</button>
+<button type="button" data-pk="beach" aria-pressed="false">{ico("pool")}Beach &amp; tide pools</button>
+</div>
+<p class="po-label">How many days?</p>
+<div class="po-days"><button type="button" data-days="3" aria-pressed="false">3</button><button type="button" data-days="7" aria-pressed="true">7</button><button type="button" data-days="14" aria-pressed="false">14</button></div>
+<label class="opt"><input type="checkbox" data-opt="radio" checked> Radio channels and weather radio</label>
+<label class="opt"><input type="checkbox" data-opt="notes" checked> Space for notes</label>
+<p class="po-go"><button type="button" class="rp-send" data-pk-print>Print my card</button> <span class="note">Fits on one page. Fold it in half for your pocket.</span></p>
 </div>
 <div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div></div>
 
@@ -826,7 +841,7 @@ def station_page(st, ctx):
                 "address": {"@type": "PostalAddress", "addressRegion": state, "addressCountry": "US",
                             **({"addressLocality": town[0]} if town else {})},
                 "url": SITE_URL + "/" + st["path"]}
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js", "community.js"),
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("units.js", "tide.js", "live.js", "planner.js", "signup.js", "community.js", "pocket.js"),
                 extra_head='<script type="application/ld+json">' + json.dumps(place_ld) + "</script>")
 
 

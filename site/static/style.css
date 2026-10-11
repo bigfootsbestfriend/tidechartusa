@@ -300,15 +300,30 @@ h2.sec svg.ico { color: var(--sea); margin-right: 6px; }
 @media print {
   .pagetools { display: none !important; }
   body.print-pocket > *:not(#pocket) { display: none !important; }
-  body.print-pocket #pocket { display: block; color: #000; font: 9pt/1.3 system-ui, sans-serif; max-width: 7.2in; padding: .3in; }
-  #pocket td:nth-child(2), #pocket td:nth-child(3) { white-space: nowrap; }
-  #pocket h1 { font-size: 14pt; margin: 0; }
-  #pocket .pk-sub { margin: 0 0 6pt; color: #444; }
-  #pocket table { width: 100%; border-collapse: collapse; }
-  #pocket th, #pocket td { border: 1px solid #999; padding: 3pt 4pt; text-align: left; vertical-align: top; }
-  #pocket thead th { background: #eee; }
-  #pocket .pk-radio { margin-top: 6pt; padding: 5pt; border: 1px solid #999; }
-  #pocket .pk-foot { margin-top: 4pt; color: #555; font-size: 7.5pt; }
+  body.print-pocket { background: #fff !important; }
+  body.print-pocket #pocket { display: block; color: #000; font: 9pt/1.3 system-ui, -apple-system, sans-serif; max-width: 7.4in; margin: 0 auto;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #pocket .pk-head { display: flex; gap: 10pt; align-items: center; padding-bottom: 6pt; border-bottom: 2.5pt solid #0b5c7a; margin-bottom: 8pt; }
+  #pocket .pk-logo { width: 34pt; height: 34pt; flex: 0 0 auto; }
+  #pocket .pk-brand { color: #0b5c7a; font-weight: 800; font-size: 9pt; letter-spacing: .06em; text-transform: uppercase; }
+  #pocket h1 { font-size: 15pt; margin: 1pt 0; color: #000; }
+  #pocket .pk-sub { margin: 0; color: #444; font-size: 8.5pt; }
+  #pocket table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  #pocket th, #pocket td { border: .6pt solid #9bb; padding: 3pt 4pt; text-align: left; vertical-align: top; }
+  #pocket thead th { background: #0b5c7a; color: #fff; font-size: 8pt; }
+  #pocket tbody th { white-space: nowrap; background: #eef6f9; }
+  #pocket td span { white-space: nowrap; }
+  #pocket td span b { color: #0b5c7a; }
+  #pocket td span.L b { color: #b5651d; }
+  #pocket .minus { font-weight: 800; }
+  #pocket .pk-tip { margin: 5pt 0; color: #333; font-size: 8pt; }
+  #pocket .pk-box { margin-top: 5pt; padding: 5pt 6pt; border: .8pt solid #0b5c7a; border-radius: 4pt; font-size: 8pt; }
+  #pocket .pk-notes { margin-top: 6pt; font-size: 8pt; }
+  #pocket .pk-notes span { display: block; height: 15pt; border-bottom: .6pt solid #9bb; }
+  #pocket .pk-foot { display: flex; gap: 8pt; align-items: center; margin-top: 8pt; padding-top: 6pt; border-top: 1pt solid #0b5c7a; font-size: 8pt; color: #333; }
+  #pocket .pk-qr { width: 52pt; height: 52pt; flex: 0 0 auto; }
+  #pocket .pk-qr svg { width: 100%; height: 100%; }
+  #pocket .pk-foot b { color: #0b5c7a; font-size: 10pt; }
 }
 /* Weather alerts banner on station pages */
 .alerts-banner { margin: 0 0 14px; }
@@ -413,3 +428,19 @@ details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border
 .acc button { font: inherit; font-size: .85rem; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
 .acc button:disabled { opacity: .5; cursor: default; }
 @media print { .card.reports, .acc { display: none !important; } }
+/* Pocket card options */
+.pocket-opts { flex: 1 1 100%; margin-top: 4px; padding: 14px; border: 1px solid var(--sea-2); border-radius: 14px; background: var(--card); }
+.pocket-opts h3 { margin: 0 0 6px; display: flex; gap: 8px; align-items: center; }
+.pocket-opts h3 svg.ico { color: var(--sea); }
+.po-label { margin: 10px 0 6px; font-weight: 600; font-size: .9rem; color: var(--muted); }
+.po-acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+@media (max-width: 560px) { .po-acts { grid-template-columns: repeat(2, 1fr); } }
+.po-acts button, .po-days button { display: flex; flex-direction: column; align-items: center; gap: 4px; font: inherit; font-size: .88rem; font-weight: 600;
+  padding: 9px 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.po-acts button svg.ico { width: 22px; height: 22px; color: var(--sea); }
+.po-days { display: flex; gap: 6px; }
+.po-days button { min-width: 52px; }
+.po-acts button[aria-pressed="true"], .po-days button[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--card); }
+.po-acts button[aria-pressed="true"] svg.ico { color: var(--card); }
+.pocket-opts .opt { display: flex; gap: 8px; margin-top: 6px; font-size: .92rem; }
+.po-go { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; }
