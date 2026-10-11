@@ -60,7 +60,7 @@ def fetch_cell(cache, la, lo):
     pad = 0.1
     b = f"{la - pad},{lo - pad},{la + 1 + pad},{lo + 1 + pad}"
     data = urllib.parse.urlencode({"data": QUERY.format(b=b)}).encode()
-    for n in range(5):
+    for n in range(2):
         try:
             req = urllib.request.Request(API, data=data, headers={"User-Agent": UA})
             j = json.loads(urllib.request.urlopen(req, timeout=180).read())
@@ -68,7 +68,7 @@ def fetch_cell(cache, la, lo):
             return j["elements"]
         except Exception as ex:
             print(f"cell {la},{lo} try {n + 1}: {str(ex)[:80]}", file=sys.stderr)
-            time.sleep(30 * (n + 1))
+            time.sleep(10)
     return None
 
 
@@ -78,6 +78,17 @@ def main():
     stations = [s for s in get(STATIONS_URL)["stations"] if us_state(s) and s.get("lat") is not None]
     cells = sorted({(math.floor(s["lat"]), math.floor(s["lng"])) for s in stations})
     print(f"{len(stations)} stations in {len(cells)} cells")
+    # The public Overpass server is often busy: make passes over the squares still missing, resting between them.
+    for attempt in range(12):
+        missing = [c for c in cells if not (cache / f"{c[0]}_{c[1]}.json").exists()]
+        print(f"pass {attempt + 1}: {len(missing)} squares to fetch", flush=True)
+        if not missing:
+            break
+        for la, lo in missing:
+            if fetch_cell(cache, la, lo) is not None:
+                time.sleep(4)
+        if any(not (cache / f"{c[0]}_{c[1]}.json").exists() for c in cells):
+            time.sleep(600)
     places = {}
     for i, (la, lo) in enumerate(cells):
         cached = (cache / f"{la}_{lo}.json").exists()
