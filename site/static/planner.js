@@ -10,7 +10,7 @@
   const all = Object.entries(data.days);
   const start = all.findIndex(([, d]) => now < d[1]);
   if (start < 0) return;
-  const days = all.slice(start, start + 14);
+  const days = all.slice(start); // the month of predictions on the page (fishing covers 14 days, currents 8)
   const ev = data.ev;
   const RATE = ["Poor", "Fair", "Good", "Very good", "Excellent"]; // same scale and badges as the fishing table
 
@@ -142,9 +142,10 @@
     list.innerHTML = ranked.map((p) => `<li><div class="pl-head"><b>${short(p.d[4])}</b>` +
       `<span class="rate r${p.r}">${RATE[p.r]}</span>${p.when ? `<span class="pl-when">${p.when}</span>` : ""}</div>` +
       `<p>${p.why}</p>${p.i < 7 ? `<button type="button" class="pl-see" data-i="${p.i}">See this day on the chart</button>` : ""}</li>`).join("") ||
-      "<li><p>No good options in the next two weeks for this one here.</p></li>";
-    note.innerHTML = (showAll ? "All days in date order. " : "The best days in the next two weeks. ") +
-      `<button type="button" class="linkish" data-all>${showAll ? "Show the best 5" : "Show all 14 days"}</button>` +
+      "<li><p>No good options coming up for this one here.</p></li>";
+    const span = act === "fish" ? "two weeks" : act === "kayak" && data.cur ? "week" : "month";
+    note.innerHTML = (showAll ? "Every day in date order. " : `The best days in the next ${span}. `) +
+      `<button type="button" class="linkish" data-all>${showAll ? "Show the best 5" : "Show every day"}</button>` +
       (act === "kayak" && !data.cur ? " No current station nearby, so this uses the size of the tide." : "") +
       " Always check the forecast and local conditions before you go.";
   };

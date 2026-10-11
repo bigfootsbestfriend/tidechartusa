@@ -148,9 +148,14 @@
   const loadWeather = async (lat, lng) => {
     const box = document.getElementById("lv-wx");
     try {
-      const pt = await getJSON(`https://api.weather.gov/points/${lat},${lng}`, NWS);
-      const p = pt.properties;
-      const fc = await getJSON(p.forecast, NWS);
+      // Stations out on the water have no forecast point: try a few spots nearby (about 3 miles away).
+      let pt = null, fc = null;
+      for (const [dy, dx] of [[0, 0], [0.04, 0], [-0.04, 0], [0, 0.05], [0, -0.05], [0.04, 0.05], [-0.04, -0.05]]) {
+        pt = await getJSON(`https://api.weather.gov/points/${(+lat + dy).toFixed(4)},${(+lng + dx).toFixed(4)}`, NWS).catch(() => null);
+        fc = pt && pt.properties && pt.properties.forecast ? await getJSON(pt.properties.forecast, NWS).catch(() => null) : null;
+        if (fc && fc.properties && (fc.properties.periods || []).length) break;
+      }
+      if (!fc || !fc.properties) return;
       window.tcWx = fc.properties.periods || [];
       window.dispatchEvent(new Event("tc:wx")); // the trip planner uses the wind forecast
       const periods = window.tcWx.slice(0, 4);

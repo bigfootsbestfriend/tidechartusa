@@ -123,7 +123,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "12"
+CSS_VER = "13"
 
 
 def ga_tag():
@@ -722,7 +722,7 @@ def station_page(st, ctx):
 
 <section class="card plan" id="plan" hidden>
 <h2>{ico("plan")}Plan a trip</h2>
-<p class="sub">Pick what you want to do and we'll rank the next two weeks for it.</p>
+<p class="sub">Pick what you want to do and we'll find the best days and times coming up.</p>
 <div class="acts" role="radiogroup" aria-label="Activity">
 <button type="button" data-act="pool" aria-pressed="true">{ico("pool")}Tide pooling</button>
 <button type="button" data-act="fish" aria-pressed="false">{ico("fish")}Fishing</button>
