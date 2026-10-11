@@ -34,6 +34,8 @@ LAUNCHED = False
 SITE_URL = os.environ.get("SITE_URL", "https://bigfootsbestfriend.github.io/tidechartusa").rstrip("/")
 BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
 SITE_NAME = "Tide Chart USA"
+# Email signups (alerts/ Worker). Empty hides every signup form; set once Resend is verified.
+ALERTS_API = os.environ.get("ALERTS_API", "")
 
 STATES = {
     "AL": "Alabama", "AK": "Alaska", "CA": "California", "CT": "Connecticut", "DC": "Washington, D.C.",
@@ -119,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "5"
+CSS_VER = "7"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -443,13 +445,101 @@ period that lines up with sunrise, sunset or a turn of the tide.</p>
 <p class="note">Solunar times are a rule of thumb many anglers use, not a guarantee. Moving water around a tide change usually matters as much.</p>"""
 
 
-def live_section(st, name, ctx):
-    zone, buoy = ctx.get("zone"), ctx.get("buoy")
-    wt, wl = st["id"] in ctx["sensors"].get("wt", ()), st["id"] in ctx["sensors"].get("wl", ())
-    if not (zone or buoy or wt or wl):
+WX_CH = {"162.550": 1, "162.400": 2, "162.475": 3, "162.425": 4, "162.450": 5, "162.500": 6, "162.525": 7}
+VHF = [("16", "Distress, safety and calling"), ("9", "Boater-to-boater calling"),
+       ("22A", "Coast Guard safety broadcasts"), ("13", "Bridge-to-bridge (big ships, drawbridges)"),
+       ("68, 69, 71, 72, 78A", "Recreational chat")]
+
+
+FIPS = {"AL": "01", "AK": "02", "CA": "06", "CT": "09", "DE": "10", "DC": "11", "FL": "12", "GA": "13", "HI": "15",
+        "LA": "22", "ME": "23", "MD": "24", "MA": "25", "MS": "28", "NH": "33", "NJ": "34", "NY": "36", "NC": "37",
+        "OR": "41", "PA": "42", "RI": "44", "SC": "45", "TX": "48", "VA": "51", "WA": "53", "AS": "60", "GU": "66",
+        "MP": "69", "PR": "72", "VI": "78"}
+
+
+def same_code(county):
+    """NWS county zone (CAC075) -> the 6-digit SAME code weather alert radios are programmed with (006075)."""
+    if county and re.fullmatch(r"[A-Z]{2}C\d{3}", county[0]) and county[0][:2] in FIPS:
+        return "0" + FIPS[county[0][:2]] + county[0][3:], county[1]
+    return None
+
+
+def radio_block(nwr, county=None):
+    tx = "".join(f'<li><b>{esc(f)} MHz</b>{f" <span class=wxch>WX{WX_CH[f]}</span>" if f in WX_CH else ""} '
+                 f'{esc(call)}, {esc(site)}, {esc(stt)} <i>({d} mi)</i></li>' for call, f, site, stt, d in nwr or [])
+    tx_part = (f'<h3>NOAA Weather Radio</h3><ul class="radio-tx">{tx}</ul>'
+               ) if nwr else ""
+    same = same_code(county)
+    if same:
+        tx_part += (f'<p class="note">To get alerts on a weather alert radio, program county code <b>{same[0]}</b> '
+                    f'({esc(same[1])}).</p>')
+    vhf = "".join(f"<li><b>Ch {c}</b> {esc(t)}</li>" for c, t in VHF)
+    return (f'<div class="radio">{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
+            f'<p class="note">Weather radio broadcasts are continuous; VHF channels are the US standard. '
+            f'Local harbors and bridges may use others, so check your chart.</p></div>')
+
+
+def signup_card(st, name, ctx):
+    if not ALERTS_API:
         return ""
-    attrs = f'data-st="{esc(st["id"])}" data-wt="{int(wt)}" data-wl="{int(wl)}"'
-    parts = []
+    warn = ("Weather warnings for this water (small craft advisories, gales, coastal flooding)"
+            if ctx.get("zone") else "Weather warnings here (coastal flooding, high surf, storms)")
+    return f"""
+<section class="card signup" id="emails">
+<h2>Get {esc(name)} tides by email</h2>
+<form method="post" action="{ALERTS_API}/subscribe">
+<input type="hidden" name="station" value="{esc(st["id"])}"><input type="hidden" name="name" value="{esc(name)}">
+<input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
+<label class="opt"><input type="checkbox" name="weekly" value="1" checked> Weekly tide times, every Thursday</label>
+<label class="opt"><input type="checkbox" name="warn" value="1" checked> {warn}</label>
+<label class="opt"><input type="checkbox" name="lows" value="1" checked> A heads-up when the weekend has minus tides</label>
+<div class="row"><input type="email" name="email" required placeholder="you@example.com" aria-label="Email address"><button type="submit">Sign me up</button></div>
+<p class="note">Free. We'll email you to confirm first, and every email has a one-click unsubscribe. <a href="{BASE}privacy/">Privacy</a></p>
+</form>
+</section>"""
+
+
+ALERTS_PAGE = """
+<article class="prose alerts-page">
+<h1>Tide emails</h1>
+<div id="al-msg"><p>Sign up on any station page: look for <b>Get tides by email</b> under the fishing times.
+You can choose a weekly tide email, weather warnings for that stretch of water, and a heads-up when the weekend has minus tides.</p></div>
+<p><a href="{base}">Find your beach or harbor →</a></p>
+</article>
+<script>
+(() => {{
+  const api = {api!r}, box = document.getElementById("al-msg"), q = new URLSearchParams(location.search);
+  const say = (h) => (box.innerHTML = "<p>" + h + "</p>");
+  const msgs = {{
+    check: "<b>Almost done.</b> Check your inbox for an email from hello@tidechartusa.com and click the button to confirm. (Look in spam or promotions if it's not there in a minute.)",
+    invalid: "That email address didn't look right. Please go back and try again.",
+    nothing: "Pick at least one kind of email, then try again.",
+    error: "Something went wrong on our end. Please try again in a few minutes.",
+  }};
+  const post = (path, t) => fetch(api + path, {{ method: "POST", headers: {{ "content-type": "application/json" }}, body: JSON.stringify({{ t }}) }})
+    .then((r) => r.json()).catch(() => ({{ state: "error" }}));
+  if (q.get("confirm")) {{
+    say("Confirming…");
+    post("/confirm", q.get("confirm")).then((r) => say(r.state === "confirmed" ? "<b>You're subscribed.</b> Your first email arrives with the next update. Every email has an unsubscribe link."
+      : r.state === "expired" ? "That link has expired. Please sign up again from the station page." : "That link didn't work. Please sign up again from the station page."));
+  }} else if (q.get("unsub")) {{
+    say("Unsubscribing…");
+    post("/unsubscribe", q.get("unsub")).then((r) => say(r.state === "unsubscribed" ? "<b>Done.</b> You won't get those emails any more." : "That link didn't work. Reply to any of our emails and we'll remove you by hand."));
+  }} else if (msgs[location.hash.slice(1)]) say(msgs[location.hash.slice(1)]);
+  history.replaceState(null, "", location.pathname + location.hash);
+}})();
+</script>
+"""
+
+
+def live_section(st, name, ctx):
+    zone, buoy, nwr = ctx.get("zone"), ctx.get("buoy"), ctx.get("nwr")
+    wt, wl = st["id"] in ctx["sensors"].get("wt", ()), st["id"] in ctx["sensors"].get("wl", ())
+    attrs = (f'data-st="{esc(st["id"])}" data-wt="{int(wt)}" data-wl="{int(wl)}" '
+             f'data-lat="{st["lat"]:.4f}" data-lng="{st["lng"]:.4f}"')
+    parts = ['<div class="lv-wx"><h3>Weather</h3><div id="lv-wx"><p>Loading the National Weather Service forecast… '
+             f'<a href="https://forecast.weather.gov/MapClick.php?lat={st["lat"]:.4f}&amp;lon={st["lng"]:.4f}">'
+             'Open it on weather.gov</a>.</p></div></div>']
     if zone:
         zid, zname, office = zone
         attrs += f' data-zone="{esc(zid)}" data-office="{esc(office)}"'
@@ -467,9 +557,10 @@ def live_section(st, name, ctx):
                    f'{esc(bname or bid)}</a> ({bdist} mi): waves, wind and water temperature</span></li>')
     if obs:
         parts.append(f'<ul class="facts lv-obs">{"".join(obs)}</ul>')
+    parts.append(radio_block(nwr, ctx.get("county")))
     return f"""
 <section class="card live" id="live" {attrs}>
-<h2>Conditions at {esc(name)}</h2>
+<h2>Weather and conditions at {esc(name)}</h2>
 {"".join(parts)}
 <p class="note">Live readings from NOAA and the National Weather Service, loaded when you open this page.</p>
 </section>"""
@@ -565,6 +656,8 @@ def station_page(st, ctx):
 {currents_section(name, ctx.get("cur"), week, tz)}
 
 {fishing_section(st, name, week, tz, f, sun_by_day)}
+
+{signup_card(st, name, ctx)}
 
 <h2>About the tides at {esc(name)}</h2>
 {writeup(st, name, f, tz)}
@@ -754,7 +847,11 @@ We download them every night, so each page always shows the next month. Sunrise,
 PRIVACY = """
 <article class="prose">
 <h1>Privacy</h1>
-<p>This site has no accounts and no forms. We don't collect personal information directly.</p>
+<p>This site has no accounts. The only personal information we collect is your email address, if you sign up for tide emails.</p>
+<h2>Tide emails</h2>
+<p>When you sign up we store your email address, the station you picked and which emails you want. We use them only to send those emails.
+The list is kept in our Cloudflare database and the emails are sent through Resend. We never sell or share it.
+Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@tidechartusa.com to be removed.</p>
 <p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, and this page will be updated to name them and explain your choices.</p>
 </article>
 """
@@ -763,6 +860,20 @@ PRIVACY = """
 def search_index(stations):
     return {"base": BASE, "s": [[s["pretty"], s["state"], s["path"], round(s["lat"], 3), round(s["lng"], 3)]
                                 for s in stations]}
+
+
+def assign_paths(stations):
+    """Adds "pretty" (display name) and "path" (URL path) to each station. Also used by alerts/send.py."""
+    seen = set()
+    for s in stations:
+        s["pretty"] = tidy(s["name"])
+        state = STATES.get(s["state"], s["state"])
+        slug = slugify(s["pretty"]) or s["id"]
+        path = f"tides/{slugify(state)}/{slug}/"
+        if path in seen:
+            path = f"tides/{slugify(state)}/{slug}-{s['id']}/"
+        seen.add(path)
+        s["path"] = path
 
 
 def main():
@@ -774,16 +885,7 @@ def main():
     shutil.copytree(STATIC, OUT / "static")
 
     built_at = dt.datetime.fromisoformat(meta["fetched"])
-    seen = set()
-    for s in stations:
-        s["pretty"] = tidy(s["name"])
-        state = STATES.get(s["state"], s["state"])
-        slug = slugify(s["pretty"]) or s["id"]
-        path = f"tides/{slugify(state)}/{slug}/"
-        if path in seen:
-            path = f"tides/{slugify(state)}/{slug}-{s['id']}/"
-        seen.add(path)
-        s["path"] = path
+    assign_paths(stations)
     by_id = {s["id"]: s for s in stations}
 
     # Nearby stations: bucket by 1-degree cells so this stays fast for ~3,000 stations.
@@ -801,6 +903,8 @@ def main():
     sensors = load(DATA / "sensors.json", {})
     buoys = load(DATA / "buoys.json", {})
     zones = load(ROOT / "collector" / "marine_zones.json", {})
+    radios = load(DATA / "nwr.json", {})
+    counties = load(ROOT / "collector" / "county_zones.json", {})
 
     def cur_for(sid):
         link = cur["links"].get(sid)
@@ -826,7 +930,8 @@ def main():
         today = built_at.astimezone(tz).date()
         ctx = {"tz": tz, "events": events, "days": days, "near": near, "today": today,
                "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
-               "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None}
+               "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None,
+               "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None}
         write(s["path"] + "index.html", station_page(s, ctx))
         if s["id"] in POPULAR:
             popular[s["id"]] = (s, tz, events, today)
@@ -846,6 +951,9 @@ def main():
         "What the curve and numbers on a tide chart mean, why the two daily highs differ, and spring vs. neap tides.",
         "how-to-read-a-tide-chart/", GUIDE, crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
     write("about/index.html", page("About Tide Chart USA", "Where our tide predictions come from.", "about/", ABOUT))
+    if ALERTS_API:
+        write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
+                                        ALERTS_PAGE.format(base=BASE, api=ALERTS_API)))
     write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))

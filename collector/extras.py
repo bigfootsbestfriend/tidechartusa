@@ -7,6 +7,8 @@
 - Marine forecast zone for each station -> collector/marine_zones.json. Zones hardly ever change,
   so this file is committed and only new stations are looked up.
 - Nearest NDBC buoy within 40 miles -> data/buoys.json (linked, since NDBC doesn't allow browser fetches)
+- County for each station (for the weather radio SAME code) -> collector/county_zones.json, cached the same way
+- Nearest in-service NOAA Weather Radio transmitters within 60 miles -> data/nwr.json
 
 Nothing here is fatal: if a source fails, the pages are built without that section.
 
@@ -29,6 +31,7 @@ from fetch import UA, get  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 ZONES = Path(__file__).resolve().parent / "marine_zones.json"
+COUNTIES = Path(__file__).resolve().parent / "county_zones.json"
 MD = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type="
 CUR_URL = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=currents_predictions"
            "&application=tidechartusa&interval=MAX_SLACK&units=english&time_zone=lst_ldt&format=json"
@@ -116,13 +119,13 @@ def nws(url):
     return json.loads(urllib.request.urlopen(req, timeout=30).read())
 
 
-def zone_at(lat, lng):
-    """Marine zone containing the point, else the first found nudging out up to ~12 miles (docks sit on land)."""
+def zone_at(lat, lng, kind="marine"):
+    """NWS zone (marine or county) containing the point, else the first found nudging out up to ~12 miles (docks sit on land)."""
     for r in (0, 0.03, 0.08, 0.18):
         for dy, dx in ([(0, 0)] if r == 0 else [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]):
             for _ in range(3):
                 try:
-                    j = nws(f"https://api.weather.gov/zones?type=marine&point={lat + dy * r:.4f},{lng + dx * r:.4f}")
+                    j = nws(f"https://api.weather.gov/zones?type={kind}&point={lat + dy * r:.4f},{lng + dx * r:.4f}")
                     break
                 except Exception:
                     time.sleep(2)
@@ -136,20 +139,20 @@ def zone_at(lat, lng):
     return []
 
 
-def marine_zones(stations, budget=900):
-    cache = json.loads(ZONES.read_text()) if ZONES.exists() else {}
+def marine_zones(stations, budget=900, kind="marine", path=ZONES):
+    cache = json.loads(path.read_text()) if path.exists() else {}
     todo = [s for s in stations if s["id"] not in cache][:budget]
 
     def one(s):
-        return s["id"], zone_at(s["lat"], s["lng"])
+        return s["id"], zone_at(s["lat"], s["lng"], kind)
 
     with ThreadPoolExecutor(4) as pool:
         for sid, z in pool.map(one, todo):
             if z is not None:  # None = network trouble; try again next run
                 cache[sid] = z
-    ZONES.write_text(json.dumps(dict(sorted(cache.items())), indent=0))
+    path.write_text(json.dumps(dict(sorted(cache.items())), indent=0))
     have = sum(1 for s in stations if cache.get(s["id"]))
-    print(f"marine zones: looked up {len(todo)}, {have}/{len(stations)} stations have a zone")
+    print(f"{kind} zones: looked up {len(todo)}, {have}/{len(stations)} stations have a zone")
 
 
 def buoys(stations):
@@ -169,10 +172,46 @@ def buoys(stations):
     print(f"buoys: {len(items)} active weather buoys, linked to {len(out)} stations")
 
 
+NWR_URL = "https://www.weather.gov/source/nwr/JS/CCL.js"
+
+
+def nwr(stations):
+    """NOAA Weather Radio transmitter list (the same file weather.gov's coverage pages use). One row per
+    transmitter/county pair, so transmitters are de-duplicated by call sign."""
+    req = urllib.request.Request(NWR_URL, headers={"User-Agent": UA})
+    js = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "replace")
+    rows = {}
+    for key, i, val in re.findall(r'^(\w+)\[(\d+)\] = "(.*)";', js, re.M):
+        rows.setdefault(i, {})[key] = val
+    tx = {}
+    for r in rows.values():
+        call = r.get("CALLSIGN")
+        if not call or not r.get("LAT") or call in tx:
+            continue
+        try:
+            tx[call] = (float(r["LAT"]), float(r["LON"]), [call, r.get("FREQ", ""), r.get("SITENAME", "").strip(),
+                                                         r.get("SITESTATE", ""), r.get("STATUS", "").strip()])
+        except ValueError:
+            continue
+    items = [(la, lo, v) for la, lo, v in tx.values() if v[4] == "NORMAL"]
+    out = {}
+    for s in stations:
+        pt = (s["lat"], s["lng"])
+        near = sorted((miles(pt, (la, lo)), v) for la, lo, v in items
+                      if abs(la - pt[0]) < 1.2 and abs(lo - pt[1]) < 1.8)
+        near = [[*v[:4], round(d)] for d, v in near if d <= 60][:2]
+        if near:
+            out[s["id"]] = near
+    (DATA / "nwr.json").write_text(json.dumps(out, separators=(",", ":")))
+    print(f"weather radio: {len(tx)} transmitters, {len(items)} in service, linked to {len(out)} stations")
+
+
 def main():
     stations = json.loads((DATA / "stations.json").read_text())["stations"]
     for name, fn in (("currents", lambda: currents(stations)), ("sensors", sensors),
-                     ("marine zones", lambda: marine_zones(stations)), ("buoys", lambda: buoys(stations))):
+                     ("marine zones", lambda: marine_zones(stations)),
+                     ("counties", lambda: marine_zones(stations, kind="county", path=COUNTIES)), ("buoys", lambda: buoys(stations)),
+                     ("weather radio", lambda: nwr(stations))):
         try:
             fn()
         except Exception as ex:

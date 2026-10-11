@@ -1,0 +1,18 @@
+# Email signups for Tide Chart USA: double opt-in, subscribers in D1, emails sent by send.py.
+name = "tide-alerts"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+routes = [{ pattern = "alerts.tidechartusa.com", custom_domain = true }]
+
+[vars]
+SITE = "https://tidechartusa.com"
+FROM = "Tide Chart USA <hello@tidechartusa.com>"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tide-alerts"
+database_id = "c1e70cfe-35ba-460a-b092-fa4e5da40b3d"
+
+# Secrets (never committed): RESEND_API_KEY, TOKEN_SECRET (signs confirm/unsubscribe links),
+# ADMIN_TOKEN (send.py uses it to read subscribers and record sent warnings).
+

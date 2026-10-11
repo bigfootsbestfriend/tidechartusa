@@ -117,8 +117,27 @@
     } catch (e) { document.getElementById("lv-wl").hidden = true; }
   };
 
+  // Land forecast for the station's point.
+  const loadWeather = async (lat, lng) => {
+    const box = document.getElementById("lv-wx");
+    try {
+      const pt = await getJSON(`https://api.weather.gov/points/${lat},${lng}`, NWS);
+      const p = pt.properties;
+      const fc = await getJSON(p.forecast, NWS);
+      const periods = (fc.properties.periods || []).slice(0, 4);
+      if (!periods.length) return;
+      box.innerHTML = `<div class="wx">${periods.map((q) => `<div class="wx-p">
+        ${q.icon ? `<img src="${esc(q.icon.replace("size=medium", "size=small"))}" alt="" width="56" height="56" loading="lazy">` : ""}
+        <b>${esc(q.name)}</b><span class="t">${q.temperature}°${esc(q.temperatureUnit)}</span>
+        <span>${esc(q.shortForecast)}</span><span class="w">Wind ${esc(q.windDirection)} ${esc(q.windSpeed)}</span></div>`).join("")}</div>
+        <p class="note">National Weather Service forecast for the nearest land point.
+        <a href="https://forecast.weather.gov/MapClick.php?lat=${lat}&lon=${lng}">7-day and hourly</a></p>`;
+    } catch (e) { /* keep the weather.gov link */ }
+  };
+
   if (live) {
-    const { st, zone, office, wt, wl } = live.dataset;
+    const { st, zone, office, wt, wl, lat, lng } = live.dataset;
+    if (lat && lng) loadWeather(lat, lng);
     if (zone && office) { loadForecast(zone, office); loadAlerts(zone); }
     if (wt === "1") loadWaterTemp(st);
     if (wl === "1") loadWaterLevel(st);

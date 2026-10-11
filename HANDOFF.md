@@ -49,3 +49,17 @@ Sun and moon are calculated locally (`site/astro.py`).
 - Heights are MLLW feet. A few NOAA stations have no MLLW predictions and are skipped (see fetch log).
 - Times on the page are station local time; the browser script uses day boundaries embedded at build time.
 - Not for navigation (stated in the footer and guide).
+
+## Weather, marine radio and tide emails (2026-10-10)
+
+- Station pages load the NWS land forecast in the browser (api.weather.gov/points) next to the marine forecast.
+- Marine radio box: nearest in-service NOAA Weather Radio transmitters (`collector/extras.py` → data/nwr.json from
+  weather.gov's CCL.js), the SAME county code for alert radios (collector/county_zones.json, cached like
+  marine_zones.json), and the standard VHF channels.
+- Tide emails: `alerts/` is a Cloudflare Worker (tide-alerts, custom domain alerts.tidechartusa.com) with a D1
+  database of subscriptions. Double opt-in, HMAC-signed links via <site>/alerts/. `alerts/send.py` sends the
+  weekly email (Thursdays, includes the weekend minus-tide heads-up) and new NWS warnings (every 3 hours) through
+  Resend; `.github/workflows/alerts.yml` runs it. Deploy with `alerts/deploy.sh`.
+- Turning it on: Worker secret RESEND_API_KEY; GitHub secrets RESEND_API_KEY and MAIL_ADDRESS (ADMIN_TOKEN is set);
+  verify tidechartusa.com in Resend; then add `ALERTS_API: https://alerts.tidechartusa.com` to the build env in
+  nightly.yml so the signup forms and /alerts/ page appear. Local secrets: ~/.config/kitchen-magpie/tidealerts.env.

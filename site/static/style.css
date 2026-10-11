@@ -179,3 +179,22 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .hero-sea { border: 0; padding: 0; }
 .spot li { white-space: nowrap; }
 .waves { bottom: -2px; } .spot li b { font-size: .8em; }
+/* Weather and marine radio */
+.wx { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.wx-p { display: flex; flex-direction: column; gap: 2px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; font-size: .9rem; }
+.wx-p img { border-radius: 8px; margin-bottom: 4px; }
+.wx-p .t { font-size: 1.3rem; font-weight: 700; }
+.wx-p .w { color: var(--muted); }
+.radio ul { list-style: none; padding: 0; margin: 0 0 10px; }
+.radio li { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.radio li i { color: var(--muted); font-style: normal; }
+.radio .wxch { display: inline-block; font-size: .78rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--foam); color: var(--sea); }
+.radio-vhf { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: 18px; }
+/* Email signup */
+.signup form { display: grid; gap: 8px; }
+.signup .opt { display: flex; gap: 10px; align-items: flex-start; }
+.signup .opt input { margin-top: 5px; accent-color: var(--sea); }
+.signup .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.signup .row input { flex: 1 1 220px; font: inherit; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.signup button { font: inherit; font-weight: 700; padding: 11px 18px; border: 0; border-radius: 10px; background: var(--sea); color: var(--card); cursor: pointer; }
+.signup .hp { position: absolute; left: -9999px; }

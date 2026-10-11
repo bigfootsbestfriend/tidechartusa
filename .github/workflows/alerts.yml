@@ -1,0 +1,49 @@
+name: Tide emails
+
+# Weekly tide email on Thursdays, and new NWS warnings every 3 hours, for confirmed subscribers.
+# Does nothing until the RESEND_API_KEY, ADMIN_TOKEN and MAIL_ADDRESS secrets exist.
+on:
+  schedule:
+    - cron: "0 13 * * 4"     # Thursday 13:00 UTC (9 AM Eastern, 6 AM Pacific)
+    - cron: "40 */3 * * *"   # warnings
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: weekly or warnings
+        default: warnings
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alerts
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ALERTS_API: https://alerts.tidechartusa.com
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MAIL_ADDRESS: ${{ secrets.MAIL_ADDRESS }}
+      SITE_URL: https://tidechartusa.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pick the mode
+        id: mode
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$ADMIN_TOKEN" ] || [ -z "$MAIL_ADDRESS" ]; then echo "mode=off" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.mode }}" ]; then echo "mode=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 13 * * 4" ]; then echo "mode=weekly" >> "$GITHUB_OUTPUT"
+          else echo "mode=warnings" >> "$GITHUB_OUTPUT"; fi
+      - name: Download predictions for subscribed stations
+        if: steps.mode.outputs.mode != 'off'
+        run: python3 collector/fetch.py --ids "$(python3 alerts/send.py ids)"
+      - name: Send
+        if: steps.mode.outputs.mode != 'off'
+        run: python3 alerts/send.py ${{ steps.mode.outputs.mode }}

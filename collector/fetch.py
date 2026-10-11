@@ -68,6 +68,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="only fetch this many stations (testing)")
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--ids", help="only these comma-separated station ids (the email job)")
     args = ap.parse_args()
 
     stations = []
@@ -79,6 +80,9 @@ def main():
                          "lng": s["lng"], "type": s.get("type") or "", "ref": s.get("reference_id") or "",
                          "tzcorr": s.get("timezonecorr")})
     stations.sort(key=lambda s: (s["state"], s["name"]))
+    if args.ids is not None:
+        want = set(filter(None, args.ids.split(",")))
+        stations = [s for s in stations if s["id"] in want]
     if args.limit:
         stations = stations[: args.limit]
 
