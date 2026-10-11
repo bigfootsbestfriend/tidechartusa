@@ -91,3 +91,13 @@ Sun and moon are calculated locally (`site/astro.py`).
   votes, favorite counts (shown from 10 votes / 25 favorites). Visitors are only a daily-rotating salted IP hash.
 - Place JSON-LD on station pages; sitemap has lastmod. IndexNow key file at /<INDEXNOW_KEY>.txt; Bing site verified by
   DNS CNAME and added via the Bing API.
+
+## Nearby places and yearly tables (2026-10-11)
+
+- **Places** (collector/places.json, committed): built from Geofabrik OpenStreetMap extracts, not Overpass (too busy).
+  Download the coastal states' .osm.pbf files (list in ~/.cache/tidechartusa-osm/list.txt on Mike's desktop; 6.9 GB),
+  `pip install osmium` in a venv, then `python3 collector/places.py --pbf <files>` (about 6 minutes). The JUNK regex
+  drops port, military, private and code-name entries. 2,522 stations have nearby places.
+- **Year tables:** yearly.yml downloads are time-boxed (45 min per year) and always save the cache, so a slow NOAA day
+  never loses progress; the next run continues. First full cache saved 2026-10-11.
+- Rule from Mike: when something is slow, look for another source or method right away instead of waiting.
