@@ -511,3 +511,7 @@ details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border
 .fishlist small { display: block; color: var(--muted); font-size: .8rem; }
 .fishlist em { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--b3); }
 .fishfresh summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
+.radar-map { height: 360px; border-radius: 10px; margin-top: 8px; border: 1px solid var(--line); z-index: 0; }
+.radar-bar { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: .9rem; color: var(--muted); }
+.radar-bar button { width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+@media (max-width: 520px) { .radar-map { height: 300px; } }

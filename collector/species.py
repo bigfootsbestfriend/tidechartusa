@@ -2,7 +2,7 @@
 
 Source: GBIF occurrence records (gbif.org), limited to records released under CC0 or CC BY 4.0, so they can be used
 on a commercial site with attribution. (iNaturalist's own API terms don't allow commercial use, and its CC BY-NC
-records are left out here.) Ray-finned fish (GBIF class 204) and sharks and rays (121) within 15 km of the station,
+records are left out here.) Ray-finned fish (their 46 GBIF orders) and sharks and rays (class 121) within 15 km of the station,
 widened to 40 km where fewer than 8 species turn up. Each species is tagged salt / brackish / fresh water from
 WoRMS (marinespecies.org).
 
@@ -32,7 +32,10 @@ NAMES = DATA / "species_names.json"
 OUT = ROOT / "collector" / "species.json"
 UA = "Shorebite/1.0 (shorebite.com; hello@shorebite.com)"
 GBIF = "https://api.gbif.org/v1"
-FISH = ("204", "121")
+# GBIF's backbone leaves ray-finned fish without a class, so they're matched by their 46 orders (Perciformes, Gadiformes,
+# Pleuronectiformes...), plus class 121 for sharks, rays and skates.
+BONY_ORDERS = ('494', '495', '496', '497', '498', '499', '537', '538', '547', '548', '549', '550', '587', '588', '589', '590', '708', '772', '773', '774', '888', '889', '890', '1067', '1068', '1069', '1103', '1104', '1105', '1106', '1107', '1153', '1162', '1163', '1164', '1165', '1166', '1167', '1305', '1306', '1307', '1308', '1310', '1311', '1312', '1313')
+FISH = BONY_ORDERS + ("121",)
 LICENSES = ("CC0_1_0", "CC_BY_4_0")
 lock = threading.Lock()
 
@@ -66,9 +69,13 @@ def station(s):
     p = RAW / f"{s['id']}.json"
     if p.exists():
         return
-    r, rows = 15, near(s["lat"], s["lng"], 15)
-    if len(rows) < 8:
-        r, rows = 40, near(s["lat"], s["lng"], 40)
+    try:
+        r, rows = 15, near(s["lat"], s["lng"], 15)
+        if len(rows) < 8:
+            r, rows = 40, near(s["lat"], s["lng"], 40)
+    except Exception as ex:  # GBIF busy: skip for now, the next run picks it up
+        print(f"  skipped {s['id']}: {str(ex)[:60]}", flush=True)
+        return
     p.write_text(json.dumps([r, rows]))
 
 
@@ -105,7 +112,10 @@ def habitat(sci):
 
 
 def lookup(key, names):
-    sp = get(f"{GBIF}/species/{key}") or {}
+    try:
+        sp = get(f"{GBIF}/species/{key}") or {}
+    except Exception:
+        return
     sci = sp.get("canonicalName") or sp.get("scientificName") or ""
     if sp.get("rank") not in (None, "SPECIES") or not sci:
         names[str(key)] = None

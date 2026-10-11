@@ -1,4 +1,4 @@
-# Tide Chart USA: handoff
+# Shorebite (formerly Tide Chart USA): handoff
 
 Static tide-chart site for every US NOAA tide prediction station (~3,000 pages), rebuilt every night.
 
@@ -101,3 +101,29 @@ Sun and moon are calculated locally (`site/astro.py`).
 - **Year tables:** yearly.yml downloads are time-boxed (45 min per year) and always save the cache, so a slow NOAA day
   never loses progress; the next run continues. First full cache saved 2026-10-11.
 - Rule from Mike: when something is slow, look for another source or method right away instead of waiting.
+
+## Renamed to Shorebite (2026-10-11)
+
+- Live at **https://shorebite.com** (Mike bought it in Cloudflare). GitHub Pages custom domain = shorebite.com (set through the
+  API; the build also writes CNAME). tidechartusa.com and www now go to the `tidechartusa-redirect` Worker (`redirect/`),
+  which sends a 301 to the same path on shorebite.com. Keep tidechartusa.com registered for at least a year or two.
+- Brand: logo = gold sun/moon with a bite out of it over the waves (`site/static/favicon.svg`; icons, og.png made from it with
+  rsvg-convert). Wordmark "Shore" white + "bite" gold #f5b942 on #0b5c7a.
+- Email: hello@shorebite.com forwards like hello@tidechartusa.com did (Cloudflare Email Routing). Resend domain shorebite.com
+  verified (same Resend account/key as before); alerts come from "Shorebite <hello@shorebite.com>". The tide-alerts Worker
+  answers on alerts.shorebite.com AND alerts.tidechartusa.com (old links in sent emails keep working).
+- Search: Bing site https://shorebite.com/ added via the API (CNAME verify record in place). Google Search Console needs Mike:
+  add the shorebite.com Domain property (send Claude the TXT code), then use Change of Address from tidechartusa.com.
+- Canada: NOT added. CHS tide predictions are licensed "not for derivative products for commercial purposes"; only the station
+  inventory is open data. Needs a commercial licence from CHS (chsinfo@dfo-mpo.gc.ca). NOAA covers only ~4 BC border spots.
+
+## Fishing forecast and fish species (2026-10-11)
+
+- "Fishing forecast" card on every station page (`bite_days()` + `bite_card()` in build.py, `static/bite.js`): hourly bite
+  score, best times, live NWS wind/gusts/rain chance (gridpoint forecast) and pressure trend (nearest stations that report it),
+  NWS radar loop (radar.weather.gov ridge GIF from the points API's radarStation), regional "biting this month"
+  (`site/species_guide.json`, exported from the app's fishing.js). Same scoring model as the app.
+- "Fish in the waters around X" (`fish_here_section()`), from `collector/species.py`: GBIF occurrence records under CC0 or
+  CC BY 4.0 only (iNaturalist's API terms bar commercial use), fish + sharks/rays within 15 km (40 km if < 8 species),
+  WoRMS habitat tags. Output `collector/species.json` is committed; rerun occasionally (GBIF rate-limits: ~1 hour with
+  8 workers, resumable via data/species_raw/).

@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "27"
+CSS_VER = "29"
 
 
 def ga_tag():
@@ -155,6 +155,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){{try{{var m=location.search.match(/[?&]sbmove=([^&#]*)/);if(!m)return;var o=JSON.parse(decodeURIComponent(m[1]));for(var k in o){{if(!/^tc-(saved|units|subbed|bar)$/.test(k))continue;if(k==="tc-saved"){{var cur=JSON.parse(localStorage.getItem(k)||"[]");JSON.parse(o[k]).forEach(function(s){{if(!cur.some(function(c){{return c.path===s.path}}))cur.push(s)}});localStorage.setItem(k,JSON.stringify(cur.slice(0,30)))}}else if(!localStorage.getItem(k))localStorage.setItem(k,o[k])}}var q=location.search.replace(/[?&]sbmove=[^&#]*/,"").replace(/^&/,"?");history.replaceState(null,"",location.pathname+q+location.hash)}}catch(e){{}}}})()</script>
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(desc)}">
 {robots}
@@ -176,7 +177,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="r"><rect width="64" height="64" rx="15"/></clipPath><mask id="bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
+<a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="sb-logo-r"><rect width="64" height="64" rx="15"/></clipPath><mask id="sb-logo-bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#sb-logo-r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#sb-logo-bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
 <nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">

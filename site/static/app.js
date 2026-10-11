@@ -24,6 +24,14 @@
       : `<p>No favorites yet. Open any beach or harbor and tap <b>Favorite</b>.</p>`;
   };
   paintList();
+  // Favorites brought over from tidechartusa.com (or saved before the offline cache existed): make sure each one
+  // has its offline copy.
+  (async () => {
+    try {
+      const c = await caches.open("tc-saved");
+      for (const s of getSaved()) if (!(await c.match(s.path))) await c.add(s.path).catch(() => {});
+    } catch (e) { /* no Cache API */ }
+  })();
   const unsave = async (path) => {
     try { await (await caches.open("tc-saved")).delete(path); } catch (e) { /* no Cache API */ }
     setSaved(getSaved().filter((s) => s.path !== path));

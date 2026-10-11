@@ -163,10 +163,81 @@
   });
   render();
 
+  // ---- rain radar: NWS radar mosaic (sharp WMS images, last hour animated) on a USGS base map, both public domain ----
+  const REGION = { AK: "alaska", HI: "hawaii", PR: "carib", VI: "carib", GU: "guam", MP: "guam", AS: null };
+  const radar = () => {
+    const box = $("bite-radar");
+    const st = (data.name.match(/, ([A-Z]{2})$/) || [])[1];
+    const region = st in REGION ? REGION[st] : "conus";
+    if (!box || !region) return;
+    box.hidden = false;
+    let started = false;
+    box.addEventListener("toggle", () => {
+      if (!box.open || started) return;
+      started = true;
+      const holder = box.querySelector(".radar-box");
+      holder.innerHTML = `<div class="radar-map" id="radar-map"></div><div class="radar-bar"><button type="button" id="radar-play" aria-label="Pause">❚❚</button><span id="radar-time">Loading radar…</span></div>` +
+        `<p class="note">Rain and storms from National Weather Service radar, last hour. Green is light rain, yellow and red are heavy rain and storms. Base map: USGS The National Map.</p>`;
+      const css = document.createElement("link");
+      css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+      document.head.appendChild(css);
+      const js = document.createElement("script");
+      js.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+      js.onload = () => draw(region).catch(() => { $("radar-time").textContent = "Radar isn't available right now."; });
+      js.onerror = () => { $("radar-time").textContent = "Radar isn't available right now."; };
+      document.head.appendChild(js);
+    });
+  };
+  const draw = async (region) => {
+    const L = window.L, lat = +live.dataset.lat, lng = +live.dataset.lng;
+    const map = L.map("radar-map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([lat, lng], 8);
+    L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 16, attribution: "USGS The National Map" }).addTo(map);
+    L.circleMarker([lat, lng], { radius: 6, color: "#fff", weight: 2, fillColor: "#d6336c", fillOpacity: 1 }).addTo(map);
+    const url = `https://opengeo.ncep.noaa.gov/geoserver/${region}/${region}_bref_qcd/ows`;
+    const caps = await fetch(`${url}?service=WMS&version=1.3.0&request=GetCapabilities`).then((r) => r.text());
+    const dim = (caps.match(/<Dimension name="time"[^>]*>([^<]+)</) || [])[1] || "";
+    const times = dim.split(",").map((x) => x.trim()).filter(Boolean);
+    const recent = times.filter((t) => Date.parse(t) > Date.now() - 65 * 60e3);
+    const step = Math.max(1, Math.round(recent.length / 8));
+    const frames = recent.filter((_, i) => (recent.length - 1 - i) % step === 0).slice(-8);
+    if (!frames.length) frames.push(times[times.length - 1]);
+    // One full-size image per frame (no tile seams), redrawn for the visible area after each pan or zoom.
+    const layers = frames.map(() => null);
+    const frameUrl = (t) => {
+      const b = map.getBounds(), size = map.getSize(), r = Math.min(2, window.devicePixelRatio || 1);
+      const sw = L.CRS.EPSG3857.project(b.getSouthWest()), ne = L.CRS.EPSG3857.project(b.getNorthEast());
+      return `${url}?service=WMS&version=1.3.0&request=GetMap&layers=${region}_bref_qcd&styles=&format=image/png&transparent=true` +
+        `&crs=EPSG:3857&bbox=${sw.x},${sw.y},${ne.x},${ne.y}&width=${Math.round(size.x * r)}&height=${Math.round(size.y * r)}&time=${encodeURIComponent(t)}`;
+    };
+    const paint = () => frames.forEach((t, n) => {
+      if (layers[n]) map.removeLayer(layers[n]);
+      layers[n] = L.imageOverlay(frameUrl(t), map.getBounds(), { opacity: n === i ? 0.75 : 0, zIndex: 5,
+        attribution: "NOAA / National Weather Service radar" }).addTo(map);
+    });
+    const fmt = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    let i = frames.length - 1, playing = true;
+    paint();
+    map.on("moveend", paint);
+    const show = () => {
+      layers.forEach((l, n) => l && l.setOpacity(n === i ? 0.75 : 0));
+      $("radar-time").textContent = `${fmt(frames[i])}${i === layers.length - 1 ? " (latest)" : ""}`;
+    };
+    show();
+    setInterval(() => { if (playing) { i = (i + 1) % layers.length; show(); } }, 700);
+    $("radar-play").addEventListener("click", (e) => {
+      playing = !playing;
+      e.currentTarget.textContent = playing ? "❚❚" : "▶";
+      e.currentTarget.setAttribute("aria-label", playing ? "Pause" : "Play");
+      if (!playing) { i = layers.length - 1; show(); }
+    });
+  };
+
   // ---- live weather (NWS) ----
   const live = document.getElementById("live");
   const lat = live ? live.dataset.lat : null, lng = live ? live.dataset.lng : null;
   if (!lat) return;
+  radar();
   const NWS = { headers: { Accept: "application/geo+json" } };
   const get = (u) => fetch(u, NWS).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
   const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
@@ -189,14 +260,6 @@
     }
     if (!pt || !pt.properties) return;
     const p = pt.properties;
-    if (p.radarStation) {
-      const box = $("bite-radar");
-      box.hidden = false;
-      box.addEventListener("toggle", () => {
-        const r = box.querySelector(".radar-box");
-        if (box.open && !r.firstChild) r.innerHTML = `<img src="https://radar.weather.gov/ridge/standard/${esc(p.radarStation)}_loop.gif" alt="Rain radar loop from NWS radar ${esc(p.radarStation)}" loading="lazy" width="600" height="550"><p class="note">Last hour of radar from the National Weather Service (${esc(p.radarStation)}). Green is light rain, yellow and red are heavy rain and storms.</p>`;
-      });
-    }
     const kmh = (v) => v * 0.621371;
     try {
       const g = (await get(p.forecastGridData)).properties;
