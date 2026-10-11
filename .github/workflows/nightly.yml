@@ -27,11 +27,23 @@ jobs:
           python-version: "3.12"
       # Predictions aren't committed (they change every day); each run downloads a fresh month.
       # If more than 5% of stations fail, fetch.py exits non-zero and yesterday's site stays up.
+      # Code-only pushes reuse the last full download (predictions start yesterday and run a month ahead),
+      # so a change goes live in a few minutes instead of waiting ~40 for NOAA.
+      - name: Reuse the last NOAA download (pushes only)
+        id: data
+        if: github.event_name == 'push'
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: noaa-data-none
+          restore-keys: noaa-data-
       - name: Download NOAA predictions
+        if: steps.data.outputs.cache-matched-key == ''
         run: python3 collector/fetch.py --workers 3
       # Currents, live-sensor lists, marine forecast zones and buoys. Optional: if it fails,
       # pages are built without those sections.
       - name: Download currents and marine extras
+        if: steps.data.outputs.cache-matched-key == ''
         run: python3 collector/extras.py
         continue-on-error: true
       - name: Build site
@@ -39,6 +51,12 @@ jobs:
         env:
           SITE_URL: https://tidechartusa.com
           ALERTS_API: https://alerts.tidechartusa.com
+      - name: Keep this download for code-only pushes
+        if: steps.data.outputs.cache-matched-key == ''
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: noaa-data-${{ github.run_id }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
