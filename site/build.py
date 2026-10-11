@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "18"
+CSS_VER = "20"
 
 
 def ga_tag():
@@ -700,11 +700,12 @@ def station_page(st, ctx):
     near_town = (f' · <a href="{BASE}{town[3]}">near {esc(town[0])}</a> ({town[2]:.0f} mi)' if town and town[2] >= 1
                  else f' · <a href="{BASE}{town[3]}">{esc(town[0])}</a>' if town else "")
     gmap = f"https://www.google.com/maps?q={st['lat']},{st['lng']}"
+    year_links = "".join(f' <a class="yr" href="{BASE}{st["path"]}{y}/">Full {y} tide table</a>' for y in ctx.get("years", ()))
     week_html = f"""<h2 id="week">Tide times this week</h2>
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
 <tbody>{week_rows}</tbody></table></div>"""
     month_html = f"""<h2 id="month">Tide table: {m_title}</h2>
-<p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button></p>
+<p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button>{year_links}</p>
 <div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
 <tbody>{month_rows}</tbody></table></div>
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>"""
@@ -782,6 +783,94 @@ def station_page(st, ctx):
 
 
 # ---------- other pages ----------
+
+YEAR_DIR = DATA / "year"
+
+
+def year_page(st, year, raw, tz):
+    """A printable tide table for a whole calendar year, one month per printed page, with the year's extremes."""
+    name = st["pretty"]
+    state = STATES.get(st["state"], st["state"])
+    by_day = {}
+    for t, v, k in raw:
+        w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        by_day.setdefault(w.date(), []).append((w, v, k))
+    highs = sorted(((v, w) for evs in by_day.values() for w, v, k in evs if k == "H"), reverse=True)
+    lows = sorted((v, w) for evs in by_day.values() for w, v, k in evs if k == "L")
+    if not highs or not lows:
+        return None
+    minus_day = 0
+    # Mark the single day of each new and full moon (least and most illuminated), not the whole phase.
+    lit = {}
+    d = dt.date(year, 1, 1) - dt.timedelta(days=1)
+    while d <= dt.date(year, 12, 31) + dt.timedelta(days=1):
+        lit[d] = astro.moon(dt.datetime.combine(d, dt.time(12), tz))[1]
+        d += dt.timedelta(days=1)
+    marks = {}
+    for d, v in lit.items():
+        a, b = lit.get(d - dt.timedelta(days=1)), lit.get(d + dt.timedelta(days=1))
+        if a is not None and b is not None:
+            if v <= a and v < b and v < 15:
+                marks[d] = "●"
+            elif v >= a and v > b and v > 85:
+                marks[d] = "○"
+    months = []
+    for m in range(1, 13):
+        first = dt.date(year, m, 1)
+        last = (dt.date(year + (m == 12), m % 12 + 1, 1) - dt.timedelta(days=1))
+        rows = []
+        d = first
+        while d <= last:
+            rise, sset = astro.sun(st["lat"], st["lng"], d, tz)
+            evs = by_day.get(d, [])
+            cells = " ".join(
+                f'<span class="ev {k}{" minus" if v < 0 else ""}"><b>{k}</b> {clock(w)} <i>{ft(v)}</i></span>' for w, v, k in evs)
+            if rise and any(k == "L" and v < 0 and rise <= w <= sset for w, v, k in evs):
+                minus_day += 1
+            mk = marks.get(d, "")
+            moon = f'<span class="mo" title="{"New moon" if mk == "●" else "Full moon"}"> {mk}</span>' if mk else ""
+            rows.append(f'<tr><th scope="row">{d.strftime("%a %-d")}{moon}</th><td class="evs">{cells}</td>'
+                        f'<td>{clock(rise) if rise else "—"} / {clock(sset) if sset else "—"}</td></tr>')
+            d += dt.timedelta(days=1)
+        mname = first.strftime("%B")
+        months.append(f'<section class="ym" id="{mname.lower()}"><h2>{mname} {year}</h2><div class="scroll"><table class="tides month">'
+                      f'<thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>'
+                      f'<tbody>{"".join(rows)}</tbody></table></div></section>')
+    kings = []
+    for v, w in highs:  # the five highest tides, at most one per day
+        if all(w.date() != k.date() for _, k in kings):
+            kings.append((v, w))
+        if len(kings) == 5:
+            break
+    town = st.get("town")
+    near = f" near {town[0]}" if town and town[0].lower() not in name.lower() else ""
+    jan, jul = dt.datetime(year, 1, 15, tzinfo=tz), dt.datetime(year, 7, 15, tzinfo=tz)
+    dst = ", adjusted for daylight saving time" if jan.utcoffset() != jul.utcoffset() else ""
+    summary = (f"<ul class='facts'><li><b>Highest tide:</b> {ft(highs[0][0])} on {highs[0][1].strftime('%B %-d')} at {clock(highs[0][1])}</li>"
+               f"<li><b>Lowest tide:</b> {ft(lows[0][0])} on {lows[0][1].strftime('%B %-d')} at {clock(lows[0][1])}</li>"
+               f"<li><b>King tides</b> (the year's highest): {', '.join(w.strftime('%b %-d') for _, w in sorted(kings, key=lambda x: x[1]))}</li>"
+               + (f"<li><b>Days with a minus tide in daylight:</b> {minus_day}, good for tide pools and clamming</li></ul>" if minus_day
+                  else f"<li><b>Minus tides in daylight:</b> none this year; the lowest daytime water is in the table below</li></ul>"))
+    jump = " · ".join(f'<a href="#{dt.date(year, m, 1).strftime("%B").lower()}">{dt.date(year, m, 1).strftime("%b")}</a>' for m in range(1, 13))
+    body = f"""
+<article class="year-page">
+<h1>{esc(name)} tide table {year}</h1>
+<p class="sub">{esc(state)}{esc(near)} · NOAA station {esc(st['id'])} · times in local time{dst} · heights in feet above MLLW</p>
+<p class="tools"><button type="button" onclick="print()">Print the {year} tide table</button> <a href="{BASE}{st['path']}">Today's chart and forecast for {esc(name)}</a></p>
+<h2>{year} at a glance</h2>
+{summary}
+<p class="ymjump">{jump}</p>
+<p class="note">H = high tide, L = low tide. Bold lows are minus tides (below the chart datum). ● new moon, ○ full moon: tides run biggest a day or two after each.</p>
+{"".join(months)}
+<p class="note">Predictions from NOAA CO-OPS. Weather can move the real water level. Not for navigation.</p>
+</article>"""
+    path = f"{st['path']}{year}/"
+    title = f"{name}, {st['state']} Tide Table {year}" + (f" ({town[0]})" if near else "")
+    desc = (f"{year} tide table for {name}{near}, {state}: every high and low tide of the year with sunrise and sunset, "
+            f"king tides and minus tides. Printable, from NOAA station {st['id']}.")
+    crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"]), (f"{year} tide table", path)]
+    return path, page(title, desc, path, body, crumbs=crumbs, scripts=("units.js",))
+
 
 def town_path(name, st):
     return f"tides-near/{slugify(name)}-{st.lower()}/"
@@ -1183,6 +1272,8 @@ def main():
         events = load(DATA / "currents" / f"{link[0]}.json", None)
         return (cur["stations"][link[0]], link[1], events) if events else None
 
+    years = sorted(int(p.name) for p in YEAR_DIR.glob("*") if p.name.isdigit()) if YEAR_DIR.exists() else []
+    year_pages = []
     groups = {}
     popular = {}
     built_data = {}
@@ -1202,8 +1293,14 @@ def main():
         ctx = {"tz": tz, "events": events, "days": days, "near": near, "today": today,
                "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
                "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None,
-               "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None}
+               "nwr": radios.get(s["id"]), "county": counties.get(s["id"]) or None,
+               "years": [y for y in years if (YEAR_DIR / str(y) / f"{s['id']}.json").exists()]}
         write(s["path"] + "index.html", station_page(s, ctx))
+        for y in ctx["years"]:
+            yp = year_page(s, y, json.loads((YEAR_DIR / str(y) / f"{s['id']}.json").read_text()), tz)
+            if yp:
+                write(yp[0] + "index.html", yp[1])
+                year_pages.append(yp[0])
         if s["id"] in POPULAR:
             popular[s["id"]] = (s, tz, events, today)
         built_data[s["id"]] = (s, tz, events, today)
@@ -1266,7 +1363,7 @@ def main():
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
         urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/"] + \
-               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages]
+               [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc></url>" for u in urls) + "</urlset>")
         write("robots.txt", f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
@@ -1276,7 +1373,7 @@ def main():
     host = urlparse(SITE_URL).hostname or ""
     if not host.endswith("github.io"):
         write("CNAME", host + "\n")
-    print(f"built {len(town_pages)} town pages")
+    print(f"built {len(town_pages)} town pages, {len(year_pages)} year tide tables")
     print(f"built {built} station pages, {len(groups)} states" + ("" if LAUNCHED else " (noindex)"))
 
 

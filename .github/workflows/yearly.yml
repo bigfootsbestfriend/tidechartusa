@@ -1,0 +1,44 @@
+name: Yearly tide tables data
+
+# Full-year predictions for the printable "<year> tide table" pages: this year and next.
+# Predictions for a year don't change, so this runs monthly and keeps the files in the Actions cache,
+# where the nightly build picks them up.
+on:
+  schedule:
+    - cron: "0 9 1 * *"   # 1st of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: yearly
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Start from the last download
+        uses: actions/cache/restore@v4
+        with:
+          path: data/year
+          key: year-data-none
+          restore-keys: year-data-
+      - name: Download this year and next
+        run: |
+          Y=$(date -u +%Y)
+          python3 collector/year.py $Y
+          python3 collector/year.py $((Y + 1))
+          # Drop years that are over.
+          for d in data/year/*; do [ "$(basename $d)" -lt "$Y" ] && rm -rf "$d"; done; true
+      - uses: actions/cache/save@v4
+        with:
+          path: data/year
+          key: year-data-${{ github.run_id }}

@@ -365,3 +365,16 @@ nav.jump a[href="#emails"] { border-color: var(--sea-2); color: var(--sea); }
 ul.towns { list-style: none; padding: 0; columns: 3 180px; }
 ul.towns li { padding: 3px 0; }
 header.top nav a.nav-saved[hidden] { display: none; }
+/* Yearly tide table pages */
+.year-page .ymjump { display: flex; flex-wrap: wrap; gap: 4px 10px; font-weight: 600; }
+.year-page .ev.minus i, .year-page .ev.minus b { font-weight: 800; }
+.year-page .ev.minus i { color: var(--low); }
+.year-page .mo { color: var(--muted); font-size: .8em; }
+.year-page section.ym h2 { margin-top: 28px; }
+.tools a.yr { margin-left: 8px; font-weight: 600; }
+@media print {
+  .year-page .tools, .year-page .ymjump { display: none !important; }
+  .year-page section.ym { break-before: page; }
+  .year-page section.ym table { font-size: 9pt; }
+  .year-page .scroll { overflow: visible; }
+}
