@@ -19,9 +19,9 @@
     if (wrap) wrap.hidden = !list.length;
     if (!listBox) return;
     listBox.innerHTML = list.length ? list.map((s) => `<div class="saved-item"><a href="${esc(s.path)}"><b>${esc(s.name)}</b>` +
-      `<small>Saved ${new Date(s.at).toLocaleDateString([], { month: "short", day: "numeric" })} · works offline</small></a>` +
+      `<small>Added ${new Date(s.at).toLocaleDateString([], { month: "short", day: "numeric" })} · works offline</small></a>` +
       `<button type="button" class="rm" data-rm="${esc(s.path)}" aria-label="Remove ${esc(s.name)}">×</button></div>`).join("")
-      : `<p>No saved spots yet. Open any beach or harbor and tap <b>Save this spot</b>.</p>`;
+      : `<p>No favorites yet. Open any beach or harbor and tap <b>Favorite</b>.</p>`;
   };
   paintList();
   const unsave = async (path) => {
@@ -41,8 +41,8 @@
     const paintSave = () => {
       const on = getSaved().some((s) => s.path === path);
       saveBtn.setAttribute("aria-pressed", on);
-      saveBtn.querySelector("b").textContent = on ? (innerWidth <= 520 ? "Saved ✓" : "Saved on this device") : "Save this spot";
-      saveBtn.querySelector("small").innerHTML = on ? `Find it under <u>Saved</u> at the top. Tap to remove.`
+      saveBtn.querySelector("b").textContent = on ? "Favorited" : "Favorite";
+      saveBtn.querySelector("small").innerHTML = on ? `In <u>Favorites</u> at the top, and works offline. Tap to remove.`
         : "Keeps it on this device. Works with no signal.";
     };
     paintSave();
@@ -53,7 +53,7 @@
       setSaved([{ path, name, at: Date.now() }, ...getSaved()].slice(0, 30));
       paintSave();
       paintList();
-      toast(`<b>Saved.</b> It now opens with no signal. Find it any time under <a href="${base}saved/">★ Saved</a> at the top of every page.`, 7000);
+      toast(`<b>Added to your favorites.</b> It's one tap away under <a href="${base}favorites/">★ Favorites</a> at the top of every page, and opens even with no signal.`, 7000);
     });
     row.querySelector("[data-pocket]").addEventListener("click", pocket);
   }
