@@ -51,6 +51,7 @@ jobs:
         env:
           SITE_URL: https://tidechartusa.com
           ALERTS_API: https://alerts.tidechartusa.com
+          GA_ID: G-1YMWN9F1GE
       - name: Keep this download for code-only pushes
         if: steps.data.outputs.cache-matched-key == ''
         uses: actions/cache/save@v4
