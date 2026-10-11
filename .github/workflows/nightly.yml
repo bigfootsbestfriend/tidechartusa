@@ -58,7 +58,7 @@ jobs:
         env:
           SITE_URL: https://shorebite.com
           ALERTS_API: https://alerts.shorebite.com
-          GA_ID: G-1YMWN9F1GE
+          GA_ID: G-5PFNWYW3ES
       - name: Keep this download for code-only pushes
         if: steps.data.outputs.cache-matched-key == ''
         uses: actions/cache/save@v4
