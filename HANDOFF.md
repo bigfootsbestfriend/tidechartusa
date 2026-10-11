@@ -75,3 +75,19 @@ Sun and moon are calculated locally (`site/astro.py`).
   handles saving, the saved list on the home and /offline/ pages, the install button and the offline notice.
 - "Print pocket card" builds a one-page 7-day summary (tides, sun, fishing, slack water, radio) from the page.
 - Bump CSS_VER whenever a static file changes: the service worker serves cached copies first.
+
+## SEO and community features (2026-10-10, after launch)
+
+- Towns: `collector/towns.py` (GeoNames cities500, CC BY) → `collector/towns.json` (committed). Station titles use the
+  town people search ("Pacifica, CA Tide Chart … (Point San Pedro)"), and ~2,000 `tides-near/<town>-<st>/` pages
+  list the closest stations with today's tides. Towns are in search.json and on state pages.
+- Yearly tide tables: `collector/year.py` + `.github/workflows/yearly.yml` (monthly, this year and next, kept in the
+  Actions cache `year-data-*`); nightly restores it and builds `tides/<state>/<station>/<year>/`.
+- Widget: `embed/<station id>/` (noindex iframe card) + `widget/` page; embed code on every station page carries a
+  normal credit link (that's the backlink).
+- Nearby places: `collector/places.py` (OpenStreetMap via Overpass, ODbL credit on the section) → `collector/places.json`.
+- Community (Worker endpoints in alerts/src/index.js, D1 tables reports/counts/seen): conditions reports (emailed to
+  OWNER_EMAIL secret with a delete link; links/phones blocked; 3 per hour per visitor), "were today's times right?"
+  votes, favorite counts (shown from 10 votes / 25 favorites). Visitors are only a daily-rotating salted IP hash.
+- Place JSON-LD on station pages; sitemap has lastmod. IndexNow key file at /<INDEXNOW_KEY>.txt; Bing site verified by
+  DNS CNAME and added via the Bing API.
