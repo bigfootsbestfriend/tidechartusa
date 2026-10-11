@@ -24,11 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      ALERTS_API: https://alerts.tidechartusa.com
+      ALERTS_API: https://alerts.shorebite.com
       ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       MAIL_ADDRESS: ${{ secrets.MAIL_ADDRESS }}
-      SITE_URL: https://tidechartusa.com
+      SITE_URL: https://shorebite.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

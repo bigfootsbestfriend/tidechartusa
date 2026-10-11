@@ -28,7 +28,7 @@ from fetch import STATIONS_URL, get, us_state  # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "places.json"
 API = "https://overpass-api.de/api/interpreter"
-UA = "TideChartUSA/1.0 (hello@tidechartusa.com; one-off batch, ~1 query per few seconds)"
+UA = "Shorebite/1.0 (hello@shorebite.com; one-off batch, ~1 query per few seconds)"
 RADIUS = 6       # miles
 PER_KIND = 4
 QUERY = """[out:json][timeout:120];

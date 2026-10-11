@@ -73,7 +73,7 @@
   installBtns().forEach((b) => b.addEventListener("click", async () => {
     if (deferred) { deferred.prompt(); await deferred.userChoice; deferred = null; b.hidden = true; return; }
     toast(`<b>Add to your home screen:</b> tap the Share button <svg class="ico" viewBox="0 0 24 24" aria-label="Share"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg> at the bottom of Safari, ` +
-      `scroll down and tap <b>Add to Home Screen</b>. Tide Chart USA then opens like an app.`, 12000);
+      `scroll down and tap <b>Add to Home Screen</b>. Shorebite then opens like an app.`, 12000);
   }));
 
   // Offline notice.

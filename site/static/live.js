@@ -10,7 +10,7 @@
   const getJSON = (url, accept) =>
     fetch(url, accept ? { headers: { Accept: accept } } : {}).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
   const NWS = "application/geo+json";
-  const COOPS = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?application=tidechartusa&format=json&units=english";
+  const COOPS = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?application=shorebite&format=json&units=english";
   const ago = (iso) => {
     const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
     return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
@@ -195,12 +195,12 @@
   document.querySelectorAll("[data-ics]").forEach((b) => b.addEventListener("click", () => {
     if (!data) return;
     const stamp = (t) => new Date(t * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Tide Chart USA//EN", "CALSCALE:GREGORIAN",
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Shorebite//EN", "CALSCALE:GREGORIAN",
       `X-WR-CALNAME:Tides: ${data.name}`];
     const now = stamp(Date.now() / 1000);
     for (const [t, v, k] of data.ev) {
       if (t < Date.now() / 1000 - 86400) continue;
-      lines.push("BEGIN:VEVENT", `UID:${data.id}-${t}@tidechartusa.com`, `DTSTAMP:${now}`,
+      lines.push("BEGIN:VEVENT", `UID:${data.id}-${t}@shorebite.com`, `DTSTAMP:${now}`,
         `DTSTART:${stamp(t)}`, `DTEND:${stamp(t + 900)}`,
         `SUMMARY:${k === "H" ? "High" : "Low"} tide ${v.toFixed(1)} ft`,
         `DESCRIPTION:${data.name} (NOAA ${data.id}). Predicted\\, not observed. Not for navigation.`, "END:VEVENT");

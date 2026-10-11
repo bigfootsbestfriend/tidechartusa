@@ -1,4 +1,4 @@
-"""Send Tide Chart USA emails to confirmed subscribers (the list lives in the tide-alerts Worker's D1 database).
+"""Send Shorebite emails to confirmed subscribers (the list lives in the tide-alerts Worker's D1 database).
 
     python3 alerts/send.py weekly      # Thursdays: the week's tides, and the weekend minus-tide heads-up
     python3 alerts/send.py warnings    # every few hours: new NWS marine/coastal warnings for each station
@@ -23,13 +23,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "site"))
-os.environ.setdefault("SITE_URL", "https://tidechartusa.com")
+os.environ.setdefault("SITE_URL", "https://shorebite.com")
 import build  # noqa: E402
 from astro import sun  # noqa: E402
 
 SITE = os.environ["SITE_URL"].rstrip("/")
-FROM = "Tide Chart USA <hello@tidechartusa.com>"
-UA = "TideChartUSA/1.0 (hello@tidechartusa.com)"
+FROM = "Shorebite <hello@shorebite.com>"
+UA = "Shorebite/1.0 (hello@shorebite.com)"
 # NWS events worth an email for people on or by the water.
 EVENTS = {
     "Small Craft Advisory", "Gale Warning", "Storm Warning", "Hurricane Force Wind Warning", "Special Marine Warning",
@@ -71,13 +71,13 @@ def shell(title, inner, unsub_url, unsub_all_url):
     addr = esc(os.environ.get("MAIL_ADDRESS", ""))
     return f"""<!doctype html><html><body style="margin:0;background:#f4f8fa">
 <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:16px;line-height:1.5;color:#11232c;max-width:560px;margin:0 auto;padding:20px 16px">
-<p style="margin:0 0 16px;font-weight:700;color:#0b5c7a;font-size:18px">Tide Chart USA</p>
+<p style="margin:0 0 16px;font-weight:700;color:#0b5c7a;font-size:18px">Shore<span style="color:#d9930d">bite</span></p>
 <h1 style="font-size:22px;line-height:1.25;margin:0 0 16px">{esc(title)}</h1>
 {inner}
 <p style="color:#536a75;font-size:13px;margin-top:28px;border-top:1px solid #d6e3e9;padding-top:12px">
 Predictions from NOAA. Not for navigation; always check local conditions.<br>
 <a href="{unsub_url}" style="color:#536a75">Stop emails for this spot</a> · <a href="{unsub_all_url}" style="color:#536a75">Unsubscribe from everything</a><br>
-Tide Chart USA · {addr}</p>
+Shorebite · {addr}</p>
 </div></body></html>"""
 
 

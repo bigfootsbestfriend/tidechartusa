@@ -1,0 +1,5 @@
+# Permanent redirect from the old name (tidechartusa.com) to shorebite.com, same path.
+name = "tidechartusa-redirect"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+routes = [{ pattern = "tidechartusa.com", custom_domain = true }, { pattern = "www.tidechartusa.com", custom_domain = true }]

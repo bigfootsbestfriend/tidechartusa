@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fetch import STATIONS_URL, get, us_state  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-URL = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=tidechartusa"
+URL = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=shorebite"
        "&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json&station={id}"
        "&begin_date={y}0101&end_date={y}1231")
 

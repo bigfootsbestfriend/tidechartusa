@@ -1,7 +1,7 @@
 """Build the static site from data/ into _site/.
 
     python3 site/build.py
-    SITE_URL=https://tidechartusa.com python3 site/build.py   # after the domain is live
+    SITE_URL=https://shorebite.com python3 site/build.py   # the live site
 
 Stdlib only. Every station gets a page with today's chart, a week of tide times, a month
 tide table, sun and moon, and a short write-up computed from its own predictions.
@@ -35,7 +35,7 @@ INDEXNOW_KEY = "ab023efee00f9ab2707e5dbe5e3881c7"
 LAUNCHED = True
 SITE_URL = os.environ.get("SITE_URL", "https://bigfootsbestfriend.github.io/tidechartusa").rstrip("/")
 BASE = urlparse(SITE_URL).path.rstrip("/") + "/"
-SITE_NAME = "Tide Chart USA"
+SITE_NAME = "Shorebite"
 # Google Analytics 4 measurement ID (G-...). Empty = no analytics tag.
 GA_ID = os.environ.get("GA_ID", "")
 # Email signups (alerts/ Worker). Empty hides every signup form; set once Resend is verified.
@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "26"
+CSS_VER = "27"
 
 
 def ga_tag():
@@ -176,7 +176,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="{BASE}"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 20c4 0 4-4 8-4s4 4 8 4 4-4 8-4 4 4 4 4v8H2z"/></svg>{SITE_NAME}</a>
+<a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="r"><rect width="64" height="64" rx="15"/></clipPath><mask id="bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
 <nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">
@@ -572,6 +572,46 @@ periods of about an hour on moonrise and moonset), dawn and dusk light, and how 
 <p class="note">A planning aid, not a guarantee. Wind, water clarity, bait and pressure changes matter too; the forecast above adds live wind and pressure when you open the page.</p>"""
 
 
+SPECIES_FILE = ROOT / "collector" / "species.json"
+FISH_HERE = json.loads(SPECIES_FILE.read_text()) if SPECIES_FILE.exists() else {"sp": {}, "st": {}}
+HAB = {"s": "Salt water", "b": "Brackish water", "f": "Fresh water", "?": ""}
+
+
+def fish_here_section(st, name):
+    """Fish recorded around the station (collector/species.py: open-licence GBIF records), salt and brackish first."""
+    got = FISH_HERE["st"].get(st["id"])
+    if not got:
+        return ""
+    r, rows = got
+    sp = [(FISH_HERE["sp"][str(k)], c) for k, c in rows if str(k) in FISH_HERE["sp"]]
+    water = [(x, c) for x, c in sp if x[2] != "f"]
+    fresh = [(x, c) for x, c in sp if x[2] == "f"]
+    if not water and not fresh:
+        return ""
+    top = max(c for _, c in sp)
+
+    def li(x, c):
+        common, sci, hab = x
+        label = esc(common) if common else f"<i>{esc(sci)}</i>"
+        return (f'<li><span><b>{label}</b>{f" <i>{esc(sci)}</i>" if common else ""}'
+                f'<small>{HAB[hab] + " · " if HAB[hab] else ""}{c} record{"s" if c != 1 else ""}</small></span>'
+                f'<em style="width:{max(4, round(100 * c / top))}%"></em></li>')
+    first = ", ".join(x[0] or x[1] for x, _ in water[:3])
+    out = [f'<h2 id="fish-here">{ico("fish")}Fish in the waters around {esc(name)}</h2>',
+           f'<p>{len(water)} kinds of fish, sharks and rays have been recorded within {r} km (about {round(r * 0.621)} miles) of this spot'
+           + (f", most often {esc(first)}" if first else "") + '. The bar shows how many records each has.</p>' if water else ""]
+    if water:
+        out.append(f'<ul class="fishlist">{"".join(li(x, c) for x, c in water)}</ul>')
+    if fresh:
+        out.append(f'<details class="fishfresh"><summary>Fresh water nearby · {len(fresh)} species</summary>'
+                   f'<p class="note">Rivers, creeks and ponds within {r} km, not the tidal water itself.</p>'
+                   f'<ul class="fishlist">{"".join(li(x, c) for x, c in fresh)}</ul></details>')
+    out.append('<p class="note">Records from <a href="https://www.gbif.org/">GBIF</a> datasets released under CC0 or CC BY 4.0 '
+               '(museum collections, surveys and community sightings). It shows what has been found here, not a complete list. '
+               'Check your state rules before keeping fish.</p>')
+    return f'<section class="fishhere">{"".join(out)}</section>'
+
+
 def bite_card(st, name, bite, today, week, tz):
     """'Fishing forecast' card: today's score, best windows and an hour-by-hour strip. static/bite.js makes the
     days clickable, marks the current hour, folds in live wind, gusts, rain and pressure, and adds the radar loop."""
@@ -699,7 +739,7 @@ You can choose a weekly tide email, weather warnings for that stretch of water, 
   const api = {api!r}, box = document.getElementById("al-msg"), q = new URLSearchParams(location.search);
   const say = (h) => (box.innerHTML = "<p>" + h + "</p>");
   const msgs = {{
-    check: "<b>Almost done.</b> Check your inbox for an email from hello@tidechartusa.com and click the button to confirm. (Look in spam or promotions if it's not there in a minute.)",
+    check: "<b>Almost done.</b> Check your inbox for an email from hello@shorebite.com and click the button to confirm. (Look in spam or promotions if it's not there in a minute.)",
     invalid: "That email address didn't look right. Please go back and try again.",
     nothing: "Pick at least one kind of email, then try again.",
     error: "Something went wrong on our end. Please try again in a few minutes.",
@@ -879,6 +919,7 @@ def station_page(st, ctx):
     jumps += [("Low tides", "low", "lows")] if dl_html else []
     jumps += [("Month", "cal", "month")]
     jumps += [("Nearby", "pin", "around")] if ctx.get("places") else []
+    jumps += [("Fish here", "fish", "fish-here")] if FISH_HERE["st"].get(st["id"]) else []
     jumps += [("Radio", "radio", "radio")]
     jumps += [("Reports", "chat", "reports")] if ALERTS_API else []
     body = f"""
@@ -951,6 +992,8 @@ def station_page(st, ctx):
 
 
 {places_section(name, ctx.get("places"))}
+
+{fish_here_section(st, name)}
 
 <h2>About the tides at {esc(name)}</h2>
 {writeup(st, name, f, tz)}
@@ -1121,7 +1164,7 @@ a {{ color:var(--sea); font-size:12px; text-decoration:none; }} a:hover {{ text-
 </style><script>if(/[?&]theme=dark/.test(location.search))document.documentElement.className="dark";if(/[?&]theme=light/.test(location.search))document.documentElement.className="light";</script></head>
 <body><div class="w"><h1>{name} tides</h1><p id="now">Tide predictions from NOAA</p>
 <svg id="c" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><ul id="list"></ul>
-<a href="{SITE_URL}/{st["path"]}" target="_blank" rel="noopener">Full tide chart and forecast · Tide Chart USA</a></div>
+<a href="{SITE_URL}/{st["path"]}" target="_blank" rel="noopener">Full tide chart and fishing forecast · Shorebite</a></div>
 <script type="application/json" id="d">{data}</script><script>{EMBED_JS}</script></body></html>"""
 
 
@@ -1129,7 +1172,7 @@ def embed_code(st):
     name = esc(st["pretty"])
     return (f'<iframe src="{SITE_URL}/embed/{st["id"]}/" title="{name} tides" width="340" height="270" '
             f'style="border:0;max-width:100%" loading="lazy"></iframe>\n'
-            f'<p style="font-size:12px;margin:4px 0"><a href="{SITE_URL}/{st["path"]}">{name} tide chart</a> by Tide Chart USA</p>')
+            f'<p style="font-size:12px;margin:4px 0"><a href="{SITE_URL}/{st["path"]}">{name} tide chart</a> by Shorebite</p>')
 
 
 PLACE_KINDS = [("beach", "beach", "Beaches"), ("ramp", "ramp", "Boat ramps"), ("marina", "anchor", "Marinas"),
@@ -1363,7 +1406,7 @@ def home(groups, total, popular):
 
 <a class="guide-cta" href="{BASE}how-to-read-a-tide-chart/"><b>New to tide charts?</b> Learn what MLLW, minus tides and spring tides mean in two minutes →</a>
 """
-    return page("Tide Charts & Tide Times for Every US Beach and Harbor",
+    return page("Shorebite: Tide Charts, Tide Times & Fishing Forecasts for Every US Beach",
                 f"Free tide charts, high and low tide times, currents, fishing times and marine forecasts for {total:,} NOAA stations across the US.",
                 "", body, scripts=("units.js", "site.js"))
 
@@ -1409,9 +1452,11 @@ __GUIDE_CTA__
 
 ABOUT = """
 <article class="prose">
-<h1>About Tide Chart USA</h1>
-<p>Tide Chart USA turns NOAA's tide predictions into fast, readable pages for every US tide station: a chart for today,
-the week ahead, a month table, sunrise and sunset, and the best daylight low tides.</p>
+<h1>About Shorebite</h1>
+<p>Shorebite turns NOAA's tide predictions into fast, readable pages for every US tide station: a chart for today,
+an hour-by-hour fishing forecast, the week ahead, a month table, currents, the marine forecast, sunrise and sunset,
+and the best daylight low tides. The Shorebite app brings the same tides and fishing forecast to your phone, offline.</p>
+<p>Shorebite used to be called Tide Chart USA. Same pages, same free tools, new name.</p>
 <p>The predictions come from the <a href="https://tidesandcurrents.noaa.gov/">NOAA Center for Operational Oceanographic Products and Services (CO-OPS)</a>.
 We download them every night, so each page always shows the next month. Sunrise, sunset and moon phase are calculated from each station's position.</p>
 <p>We are not affiliated with NOAA. Predictions are not observations, and this site is not for navigation.</p>
@@ -1432,7 +1477,7 @@ PRIVACY = """
 <h2>Tide emails</h2>
 <p>When you sign up we store your email address, the station you picked and which emails you want. We use them only to send those emails.
 The list is kept in our Cloudflare database and the emails are sent through Resend. We never sell or share it.
-Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@tidechartusa.com to be removed.</p>
+Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@shorebite.com to be removed.</p>
 <h2>Conditions reports, votes and favorites</h2>
 <p>Conditions reports are public and anonymous: we show the tags and note you choose, and the time. Accuracy votes and
 favorites are stored only as totals per station. To stop spam and double votes we keep a scrambled code made from your
@@ -1458,7 +1503,7 @@ schools and local news. There's no sign-up and no ads in the widget.</p>
 <ul><li>It's 340 pixels wide and shrinks to fit narrow columns. It follows your visitor's light or dark setting; add <code>?theme=light</code> or <code>?theme=dark</code> to the address in the code to fix one.</li>
 <li>Please keep the small link under the widget: it tells your visitors where the tides come from.</li>
 <li>Predictions, not live readings. Not for navigation.</li></ul>
-<p>Questions? Email <a href="mailto:hello@tidechartusa.com">hello@tidechartusa.com</a>.</p>
+<p>Questions? Email <a href="mailto:hello@shorebite.com">hello@shorebite.com</a>.</p>
 </article>
 """
 
@@ -1654,7 +1699,7 @@ def main():
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
     write("manifest.webmanifest", json.dumps({
-        "name": SITE_NAME, "short_name": "Tides", "start_url": BASE, "scope": BASE, "display": "standalone",
+        "name": SITE_NAME, "short_name": "Shorebite", "start_url": BASE, "scope": BASE, "display": "standalone",
         "background_color": "#f4f8fa", "theme_color": "#0b5c7a",
         "description": "Tide charts, currents, fishing times and marine weather for US beaches and harbors.",
         "icons": [{"src": f"{BASE}static/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any maskable"}
@@ -1676,12 +1721,12 @@ def main():
         "how-to-read-a-tide-chart/", GUIDE.replace("__GUIDE_CTA__", (
             f'<p class="cta-box">{ico("mail")} <span>Want this for your own beach? <a href="{BASE}#signup-band">Get its tides free by email '
             f'every Thursday</a>, with a heads-up before the best low tides.</span></p>') if ALERTS_API else ""), crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
-    write("about/index.html", page("About Tide Chart USA", "Where our tide predictions come from.", "about/", ABOUT))
+    write("about/index.html", page("About Shorebite", "Where our tide predictions come from.", "about/", ABOUT))
     if ALERTS_API:
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
                                         ALERTS_PAGE.format(base=BASE, api=ALERTS_API),
                                         extra_head='<meta name="robots" content="noindex">'))
-    write("privacy/index.html", page("Privacy", "Privacy at Tide Chart USA.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
+    write("privacy/index.html", page("Privacy", "Privacy at Shorebite.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))

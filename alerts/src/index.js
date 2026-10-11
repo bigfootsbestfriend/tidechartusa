@@ -1,4 +1,4 @@
-// Tide Chart USA email signups (Cloudflare Worker + D1 + Resend).
+// Shorebite email signups (Cloudflare Worker + D1 + Resend).
 //
 //   POST /subscribe     form {email, station, weekly, warn, lows, website (honeypot)}: emails a confirm link,
 //                       then redirects to <site>/alerts/#check
@@ -71,11 +71,11 @@ async function subscribe(req, env) {
     to: [email],
     subject: "Confirm your tide emails",
     html: `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5;max-width:520px">
-<p>Thanks for signing up for tide emails${where} from Tide Chart USA.</p>
+<p>Thanks for signing up for tide emails${where} from Shorebite.</p>
 <p><a href="${link}" style="display:inline-block;background:#0b5c7a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700">Confirm my email</a></p>
 <p style="color:#666;font-size:14px">The link works for ${TOKEN_DAYS} days. If you didn't sign up, ignore this email and you won't hear from us.</p>
 </div>`,
-    text: `Thanks for signing up for tide emails${name ? " for " + name : ""} from Tide Chart USA.\n\nConfirm here: ${link}\n\nIf you didn't sign up, ignore this email.`,
+    text: `Thanks for signing up for tide emails${name ? " for " + name : ""} from Shorebite.\n\nConfirm here: ${link}\n\nIf you didn't sign up, ignore this email.`,
   });
   return back(env, "check");
 }

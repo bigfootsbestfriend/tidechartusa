@@ -1,12 +1,13 @@
-# Email signups for Tide Chart USA: double opt-in, subscribers in D1, emails sent by send.py.
+# Email signups for Shorebite: double opt-in, subscribers in D1, emails sent by send.py.
 name = "tide-alerts"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
-routes = [{ pattern = "alerts.tidechartusa.com", custom_domain = true }]
+# alerts.tidechartusa.com stays so links in emails sent before the rename keep working.
+routes = [{ pattern = "alerts.shorebite.com", custom_domain = true }, { pattern = "alerts.tidechartusa.com", custom_domain = true }]
 
 [vars]
-SITE = "https://tidechartusa.com"
-FROM = "Tide Chart USA <hello@tidechartusa.com>"
+SITE = "https://shorebite.com"
+FROM = "Shorebite <hello@shorebite.com>"
 
 [[d1_databases]]
 binding = "DB"

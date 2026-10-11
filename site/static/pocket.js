@@ -1,5 +1,5 @@
 // Printable pocket card, tailored to an activity. Built from the page's own data (#tide-data) plus the
-// radio box and wind forecast already on the page, with Tide Chart USA branding and a QR code back to the spot.
+// radio box and wind forecast already on the page, with Shorebite branding and a QR code back to the spot.
 // Times and heights are written in feet/12-hour; units.js converts them if the visitor chose otherwise.
 (() => {
   const el = document.getElementById("tide-data");
@@ -121,15 +121,15 @@
     card.id = "pocket";
     card.innerHTML = `<header class="pk-head">
         <svg viewBox="0 0 32 32" class="pk-logo" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0b5c7a"/><path d="M3 18c4 0 4-4 8-4s4 4 8 4 4-4 8-4 2 2 2 2v11H3z" fill="#7fd3e8"/><path d="M3 23c4 0 4-3 8-3s4 3 8 3 4-3 8-3 2 1 2 1v6H3z" fill="#fff"/></svg>
-        <div><div class="pk-brand">Tide Chart USA</div><h1>${esc(title)}: ${esc(name)}</h1>
+        <div><div class="pk-brand">Shore<b>bite</b></div><h1>${esc(title)}: ${esc(name)}</h1>
         <p class="pk-sub">${esc(txt(document.querySelector(".station .sub")).replace(/ · times in local time.*$/, ""))}${zone && kind === "boating" ? ` · Marine zone: ${esc(zone)}` : ""}</p></div>
       </header>
       <table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
       <p class="pk-tip">${tips}</p>
       ${radio}
       ${opt("notes") ? `<div class="pk-notes"><b>Notes</b>${"<span></span>".repeat(4)}</div>` : ""}
-      <footer class="pk-foot">${qr ? `<div class="pk-qr">${qr}</div>` : ""}<div><b>tidechartusa.com</b><br>Scan for today's live chart, weather and warnings.
-      Free tide emails and an offline app at tidechartusa.com.<br><small>Printed ${new Date().toLocaleDateString()} · NOAA predictions in local time · not for navigation</small></div></footer>`;
+      <footer class="pk-foot">${qr ? `<div class="pk-qr">${qr}</div>` : ""}<div><b>shorebite.com</b><br>Scan for today's live chart, weather and warnings.
+      Free tide emails and an offline app at shorebite.com.<br><small>Printed ${new Date().toLocaleDateString()} · NOAA predictions in local time · not for navigation</small></div></footer>`;
     document.body.appendChild(card);
     document.body.classList.add("print-pocket");
     if (window.gtag) window.gtag("event", "pocket_card", { kind, days });

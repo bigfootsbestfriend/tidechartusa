@@ -34,9 +34,9 @@ ZONES = Path(__file__).resolve().parent / "marine_zones.json"
 COUNTIES = Path(__file__).resolve().parent / "county_zones.json"
 MD = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type="
 CUR_URL = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=currents_predictions"
-           "&application=tidechartusa&interval=MAX_SLACK&units=english&time_zone=lst_ldt&format=json"
+           "&application=shorebite&interval=MAX_SLACK&units=english&time_zone=lst_ldt&format=json"
            "&station={id}&bin={bin}&begin_date={begin}&range={hours}")
-NWS_UA = "TideChartUSA/1.0 (hello@crossplayguide.com)"
+NWS_UA = "Shorebite/1.0 (hello@shorebite.com)"
 CUR_DAYS = 8
 
 

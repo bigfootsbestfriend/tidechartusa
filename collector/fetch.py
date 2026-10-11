@@ -22,9 +22,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 STATIONS_URL = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions"
 PRED_URL = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions"
-            "&application=tidechartusa&datum=MLLW&time_zone=lst_ldt&units=english"
+            "&application=shorebite&datum=MLLW&time_zone=lst_ldt&units=english"
             "&interval=hilo&format=json&station={id}&begin_date={begin}&range={hours}")
-UA = "TideChartUSA/1.0 (static tide chart site; contact via GitHub bigfootsbestfriend/tidechartusa)"
+UA = "Shorebite/1.0 (shorebite.com; hello@shorebite.com)"
 
 # US states and territories. NOAA leaves "state" blank for a few US islands, so those are
 # matched by name; every other blank-state station is outside the US and skipped.

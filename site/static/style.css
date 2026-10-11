@@ -1,4 +1,4 @@
-/* Tide Chart USA. Light by default, dark when the device asks for it. System fonts only (fast). */
+/* Shorebite. Light by default, dark when the device asks for it. System fonts only (fast). */
 :root {
   --bg: #f4f8fa; --card: #ffffff; --ink: #11232c; --muted: #536a75; --line: #d6e3e9;
   --sea: #0b5c7a; --sea-2: #1689ad; --foam: #d9f1f8; --high: #0b5c7a; --low: #b5651d; --now: #d6336c;
@@ -495,3 +495,19 @@ details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border
 @media (prefers-color-scheme: dark) { .rate.b2 { background: #3b3018; color: #f0c76a; } .rate.b3 { background: #173a2b; color: #7fe0b0; } .rate.b4 { color: #08261a; } }
 @media (max-width: 520px) { .bite-ring { width: 82px; height: 82px; } .bite-ring b { font-size: 1.7rem; } .bite-best .win { font-size: 1.1rem; } }
 @media print { .card.bite { display: none; } }
+
+/* Shorebite wordmark */
+.brand svg.mark { width: 32px; height: 32px; fill: initial; flex: 0 0 auto; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255,255,255,.3); }
+.brand .word { font-size: 1.2rem; letter-spacing: -.01em; }
+.brand .word b { color: #f5b942; font-weight: 800; }
+
+/* Fish in these waters */
+.fishhere h2 > svg.ico { width: 1.25em; height: 1.25em; padding: 4px; margin-right: 8px; border-radius: 8px; background: var(--foam); color: var(--sea); box-sizing: content-box; vertical-align: -0.35em; }
+.fishlist { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.fishlist li { position: relative; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); overflow: hidden; }
+.fishlist li span { display: block; }
+.fishlist b { display: block; }
+.fishlist i { color: var(--muted); font-size: .85rem; }
+.fishlist small { display: block; color: var(--muted); font-size: .8rem; }
+.fishlist em { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--b3); }
+.fishfresh summary { cursor: pointer; font-weight: 600; margin: 8px 0; }

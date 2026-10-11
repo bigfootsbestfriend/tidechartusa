@@ -56,8 +56,8 @@ jobs:
       - name: Build site
         run: python3 site/build.py
         env:
-          SITE_URL: https://tidechartusa.com
-          ALERTS_API: https://alerts.tidechartusa.com
+          SITE_URL: https://shorebite.com
+          ALERTS_API: https://alerts.shorebite.com
           GA_ID: G-1YMWN9F1GE
       - name: Keep this download for code-only pushes
         if: steps.data.outputs.cache-matched-key == ''
