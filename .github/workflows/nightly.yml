@@ -38,6 +38,7 @@ jobs:
         run: python3 site/build.py
         env:
           SITE_URL: https://tidechartusa.com
+          ALERTS_API: https://alerts.tidechartusa.com
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
