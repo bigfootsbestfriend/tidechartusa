@@ -126,7 +126,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "32"
+CSS_VER = "33"
 
 
 def ga_tag():
@@ -179,7 +179,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="sb-logo-r"><rect width="64" height="64" rx="15"/></clipPath><mask id="sb-logo-bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#sb-logo-r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#sb-logo-bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
-<nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}fishing/">Fishing</a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
+<nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}fishing/">Fishing</a><a href="{BASE}king-tides/">King tides</a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">
 {body}
@@ -1619,7 +1619,27 @@ def bite_card_small(st, tz, today):
             f'<small>{esc(STATES.get(st["state"], st["state"]))}</small></span>{bite_line(st, tz, today)}</a>')
 
 
-def home(groups, total, popular):
+def kt_band(kings):
+    """Home page: the next king tides in the busiest coastal states, linking into the king tide pages."""
+    if not kings:
+        return ""
+    today = dt.datetime.now(dt.timezone.utc).date()
+    chips = []
+    for c in ("CA", "OR", "WA", "FL", "SC", "NJ", "NY", "MA", "VA", "TX", "HI", "AK"):
+        spots = kings.get(c)
+        if not spots:
+            continue
+        wins = [w for w in kingtides.state_windows([kt for _, kt in spots]) if w[1] >= today]
+        if wins:
+            chips.append(f'<a class="kt-chip" href="{BASE}{kt_path(c)}"><b>{esc(STATES[c])}</b> {kingtides.span(wins[0][0], wins[0][1])}</a>')
+    return f"""<section class="fish-band kt-band">
+<div class="fish-band-head"><h2 class="sec">{ico("cal")}King tides {kingtides.season_label(today)}</h2>
+<a href="{BASE}king-tides/">Every state, every spot →</a></div>
+<p>The highest tides of the year. Here's when the next ones arrive; open a state for peak times and heights at your spot.</p>
+<div class="kt-chips">{"".join(chips)}</div>
+</section>"""
+
+def home(groups, total, popular, kings=None):
     cards = []
     for st, tz, events, today in popular:
         a = dt.datetime.combine(today, dt.time(0), tz).timestamp()
@@ -1659,6 +1679,8 @@ def home(groups, total, popular):
 
 <h2 class="sec">Popular spots{f' <span>· {day_label(day)}</span>' if day else ''}</h2>
 <div class="spots">{"".join(cards)}</div>
+
+{kt_band(kings)}
 
 <section class="fish-band">
 <div class="fish-band-head"><h2 class="sec">{ico("fish")}Best fishing today</h2>
@@ -1998,7 +2020,7 @@ def main():
                                    extra_head='<meta name="robots" content="noindex">'))
     write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",),
                                      extra_head='<meta name="robots" content="noindex">'))
-    write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))
+    write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular], kt_by_state))
     write("fishing/index.html", fishing_page(groups))
     write("states/index.html", page("Tide Charts by State", "Pick a state to see every NOAA tide station there.",
                                     "states/", f"<h1>Tide charts by state</h1><ul class='states'>{states_index(groups)}</ul>",

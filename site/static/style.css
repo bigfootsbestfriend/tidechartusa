@@ -548,3 +548,8 @@ h2.sec > svg.ico { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-
 .kt table.tides th, .kt table.tides td { white-space: normal; }
 .kt-spots th[scope="row"] { min-width: 9em; }
 .kt td b { white-space: nowrap; }
+.kt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.kt-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); text-decoration: none; font-size: .92rem; }
+.kt-chip b { color: var(--ink); }
+.kt-chip:hover { border-color: var(--sea-2); }
