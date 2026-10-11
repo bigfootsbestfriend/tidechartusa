@@ -265,3 +265,33 @@ details.radio summary svg.ico { margin-right: 6px; }
 @media print { .plan, .units { display: none !important; } }
 .rate.r4 { background: var(--sea); color: var(--card); }
 .card.plan { margin-top: 16px; } .card.plan h2 { margin-top: 0; }
+/* Page tools: save offline, pocket card, install, units */
+.pagetools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 12px; }
+.pagetools .units { margin: 0; }
+.acts-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.acts-row button { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: .85rem; font-weight: 600; padding: 5px 11px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.acts-row button svg.ico { color: var(--sea); }
+.acts-row button[aria-pressed="true"] { background: var(--foam); border-color: var(--sea-2); }
+.acts-row button[aria-pressed="true"] svg.ico { fill: var(--sea); }
+.saved-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.saved-item { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); text-decoration: none; }
+.saved-item small { display: block; color: var(--muted); }
+h2.sec svg.ico { color: var(--sea); margin-right: 6px; }
+.offline-note { margin: 10px 0; padding: 10px 14px; border-radius: 10px; background: #fff3cd; color: #5c4400; font-size: .92rem; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: min(92vw, 480px); z-index: 50;
+  padding: 12px 16px; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: .92rem; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+#pocket { display: none; }
+@media print {
+  .pagetools { display: none !important; }
+  body.print-pocket > *:not(#pocket) { display: none !important; }
+  body.print-pocket #pocket { display: block; color: #000; font: 9pt/1.3 system-ui, sans-serif; max-width: 7.2in; padding: .3in; }
+  #pocket td:nth-child(2), #pocket td:nth-child(3) { white-space: nowrap; }
+  #pocket h1 { font-size: 14pt; margin: 0; }
+  #pocket .pk-sub { margin: 0 0 6pt; color: #444; }
+  #pocket table { width: 100%; border-collapse: collapse; }
+  #pocket th, #pocket td { border: 1px solid #999; padding: 3pt 4pt; text-align: left; vertical-align: top; }
+  #pocket thead th { background: #eee; }
+  #pocket .pk-radio { margin-top: 6pt; padding: 5pt; border: 1px solid #999; }
+  #pocket .pk-foot { margin-top: 4pt; color: #555; font-size: 7.5pt; }
+}

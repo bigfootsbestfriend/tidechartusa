@@ -121,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "10"
+CSS_VER = "11"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -148,6 +148,9 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 {robots}
 <link rel="canonical" href="{esc(url)}">
 <link rel="icon" href="{BASE}static/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="{BASE}manifest.webmanifest">
+<link rel="apple-touch-icon" href="{BASE}static/icon-192.png">
+<meta name="theme-color" content="#0b5c7a">
 <link rel="stylesheet" href="{BASE}static/style.css?v={CSS_VER}">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
@@ -168,6 +171,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <p><a href="{BASE}about/">About</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
+<script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
 </body>
 </html>
 """
@@ -689,7 +693,8 @@ def station_page(st, ctx):
 <h1>{esc(name)} tide chart</h1>
 <p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
 {jump_nav(jumps)}
-<div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div>
+<div class="pagetools"><div class="acts-row" id="acts-row" hidden><button type="button" data-save>{ico("star")}<span>Save offline</span></button><button type="button" data-pocket>{ico("print")}<span>Print pocket card</span></button><button type="button" data-install hidden>{ico("phone")}<span>Install app</span></button></div>
+<div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div></div>
 
 <section class="today card" id="today">
 <div class="today-head"><h2>{ico("chart")}<span id="today-title">Tides today, {day_label(today)}</span></h2><p class="now" id="now" hidden></p></div>
@@ -787,6 +792,9 @@ ICON = {
     "pool": '<path d="M3 15c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2"/><path d="M8 9a2 2 0 1 0 0-.01M15 7l1.5 3h-3z"/>',
     "kayak": '<path d="M2 15c4 2 16 2 20 0"/><path d="M5 20 19 6"/><path d="M17 4l3 3M4 17l3 3"/>',
     "walk": '<circle cx="13" cy="4" r="2"/><path d="m9 21 2-6 3 3v3M8 11l3-4 3 2 3 1M11 7l-1 5"/>',
+    "star": '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+    "print": '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    "phone": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 
@@ -848,6 +856,8 @@ def home(groups, total, popular):
 <p class="locate-msg" data-locate-msg hidden></p>
 </div>
 </section>
+
+<section class="saved" id="saved" hidden><h2 class="sec">{ico("star")}Your saved spots <span>· work offline</span></h2><div class="saved-list" id="saved-list"></div></section>
 
 <h2 class="sec">Popular spots{f' <span>· {day_label(day)}</span>' if day else ''}</h2>
 <div class="spots">{"".join(cards)}</div>
@@ -924,6 +934,57 @@ The list is kept in our Cloudflare database and the emails are sent through Rese
 Every email has a one-click unsubscribe link, which deletes your subscription. You can also email hello@tidechartusa.com to be removed.</p>
 <p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, and this page will be updated to name them and explain your choices.</p>
 </article>
+"""
+
+
+OFFLINE = """
+<article class="prose">
+<h1>You're offline</h1>
+<p>This page isn't saved on your device. Spots you've saved, or opened recently, still work without a connection:</p>
+<div class="saved-list" id="saved-list"></div>
+<p class="note">Saved pages hold a month of tide predictions. Live weather, warnings and water levels need a connection.</p>
+</article>
+"""
+
+# Service worker: pages come from the network when possible (so they stay fresh) and fall back to the copy
+# on the device; the files a page needs are cached on first use. "Save offline" keeps a page in its own cache.
+SW = """const VER = "__VER__", BASE = "__BASE__";
+const STATIC = "tc-static-" + VER, PAGES = "tc-pages", SAVED = "tc-saved", MAX_PAGES = 40;
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(STATIC).then((c) => c.addAll([BASE, BASE + "offline/", BASE + "static/icon-192.png"])).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("tc-static-") && k !== STATIC).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
+const trim = async () => {
+  const c = await caches.open(PAGES), keys = await c.keys();
+  for (const k of keys.slice(0, Math.max(0, keys.length - MAX_PAGES))) await c.delete(k);
+};
+self.addEventListener("fetch", (e) => {
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== location.origin || !url.pathname.startsWith(BASE)) return;
+  if (req.mode === "navigate") {
+    e.respondWith(fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone(), copy2 = res.clone();
+        caches.open(PAGES).then((c) => c.put(url.pathname, copy)).then(trim);
+        // Saved pages get the fresh copy too, so a saved spot always has the latest month of tides.
+        caches.open(SAVED).then(async (c) => { if (await c.match(url.pathname)) c.put(url.pathname, copy2); });
+      }
+      return res;
+    }).catch(async () => (await caches.match(url.pathname, { ignoreSearch: true })) || caches.match(BASE + "offline/")));
+    return;
+  }
+  // Scripts, styles, icons and the search index: cached copy first, refreshed in the background.
+  e.respondWith(caches.match(req).then((hit) => {
+    const net = fetch(req).then((res) => {
+      if (res.ok) { const copy = res.clone(); caches.open(STATIC).then((c) => c.put(req, copy)); }
+      return res;
+    });
+    return hit || net;
+  }));
+});
 """
 
 
@@ -1012,6 +1073,14 @@ def main():
         path, html_ = state_page(code, g)
         write(path + "index.html", html_)
     live = [s for g in groups.values() for s in g]
+    write("manifest.webmanifest", json.dumps({
+        "name": SITE_NAME, "short_name": "Tides", "start_url": BASE, "scope": BASE, "display": "standalone",
+        "background_color": "#f4f8fa", "theme_color": "#0b5c7a",
+        "description": "Tide charts, currents, fishing times and marine weather for US beaches and harbors.",
+        "icons": [{"src": f"{BASE}static/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any maskable"}
+                  for n in (192, 512)]}, indent=1))
+    write("sw.js", SW.replace("__BASE__", BASE).replace("__VER__", CSS_VER + "-" + built_at.strftime("%Y%m%d")))
+    write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",)))
     write("index.html", home(groups, len(live), [popular[i] for i in POPULAR if i in popular]))
     write("states/index.html", page("Tide Charts by State", "Pick a state to see every NOAA tide station there.",
                                     "states/", f"<h1>Tide charts by state</h1><ul class='states'>{states_index(groups)}</ul>",

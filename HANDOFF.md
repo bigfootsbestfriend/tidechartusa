@@ -63,3 +63,15 @@ Sun and moon are calculated locally (`site/astro.py`).
 - Turning it on: Worker secret RESEND_API_KEY; GitHub secrets RESEND_API_KEY and MAIL_ADDRESS (ADMIN_TOKEN is set);
   verify tidechartusa.com in Resend; then add `ALERTS_API: https://alerts.tidechartusa.com` to the build env in
   nightly.yml so the signup forms and /alerts/ page appear. Local secrets: ~/.config/kitchen-magpie/tidealerts.env.
+
+## Interactive pages, offline app, pocket card (2026-10-10)
+
+- Station pages: day picker on the chart, tap-to-read chart, tabs for the tables, sticky jump row, trip planner
+  (`static/planner.js`: tide pooling, fishing, kayaking, beach walks over 14 days; uses `fish`/`cur` in the page JSON
+  and the NWS wind forecast that live.js publishes as `window.tcWx`), feet/meters and 12/24h (`static/units.js`
+  rewrites text on screen, remembered in localStorage).
+- Offline app: `manifest.webmanifest` + `sw.js` written by build.py (network-first pages with a device copy,
+  last 40 pages kept; "Save offline" pages kept in their own cache and refreshed on each visit). `static/app.js`
+  handles saving, the saved list on the home and /offline/ pages, the install button and the offline notice.
+- "Print pocket card" builds a one-page 7-day summary (tides, sun, fishing, slack water, radio) from the page.
+- Bump CSS_VER whenever a static file changes: the service worker serves cached copies first.
