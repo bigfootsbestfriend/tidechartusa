@@ -121,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "11"
+CSS_VER = "12"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -556,7 +556,7 @@ def live_section(st, name, ctx):
     if zone:
         zid, zname, office = zone
         attrs += f' data-zone="{esc(zid)}" data-office="{esc(office)}"'
-        parts.append(f'<div class="lv-fc"><h3>Marine forecast: {esc(zname)}</h3><div id="lv-alerts"></div>'
+        parts.append(f'<div class="lv-fc"><h3>Marine forecast: {esc(zname)}</h3>'
                      f'<div id="lv-fc"><p>Loading the latest National Weather Service forecast… '
                      f'<a href="https://marine.weather.gov/MapClick.php?zoneid={esc(zid)}">Open it on weather.gov</a>.</p></div></div>')
     obs = []
@@ -693,6 +693,7 @@ def station_page(st, ctx):
 <h1>{esc(name)} tide chart</h1>
 <p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
 {jump_nav(jumps)}
+<section class="alerts-banner" id="alerts" aria-live="polite" hidden><template class="i-warn">{ico("warn")}</template><template class="i-check">{ico("check")}</template></section>
 <div class="pagetools"><div class="acts-row" id="acts-row" hidden><button type="button" data-save>{ico("star")}<span>Save offline</span></button><button type="button" data-pocket>{ico("print")}<span>Print pocket card</span></button><button type="button" data-install hidden>{ico("phone")}<span>Install app</span></button></div>
 <div class="units" id="units" hidden><span>Units</span><button type="button" data-u="ft">ft</button><button type="button" data-u="m">m</button><span class="sep"></span><button type="button" data-u="12">12h</button><button type="button" data-u="24">24h</button></div></div>
 
@@ -795,6 +796,8 @@ ICON = {
     "star": '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
     "print": '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
     "phone": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+    "warn": '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+    "check": '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 

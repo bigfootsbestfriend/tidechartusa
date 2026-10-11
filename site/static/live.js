@@ -80,15 +80,42 @@
     }
   };
 
-  const loadAlerts = async (zone) => {
-    try {
-      const j = await getJSON(`https://api.weather.gov/alerts/active?zone=${zone}`, NWS);
-      const box = document.getElementById("lv-alerts");
-      const seen = new Set();
-      box.innerHTML = (j.features || []).map((f) => f.properties).filter((p) => !seen.has(p.event) && seen.add(p.event))
-        .map((p) => `<p class="alert"><b>${esc(p.event)}</b>${p.ends || p.expires ? ` until ${esc(new Date(p.ends || p.expires)
-          .toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}` : ""}</p>`).join("");
-    } catch (e) { /* no alerts shown */ }
+  // Active NWS alerts for the station's marine zone and its exact point (coastal flood, high surf and other
+  // land-side alerts), shown as a banner at the top of the page, most serious first.
+  const SEV = { Extreme: 0, Severe: 1, Moderate: 2, Minor: 3, Unknown: 4 };
+  const kind = (ev) => /warning/i.test(ev) ? "warning" : /watch/i.test(ev) ? "watch" : /advisory/i.test(ev) ? "advisory" : "statement";
+  // NWS headlines are in capitals: make them a sentence, keeping AM/PM, time zones and day names right.
+  const sentence = (t) => String(t).toLowerCase().replace(/^./, (c) => c.toUpperCase())
+    .replace(/\b(am|pm|[acemph]k?[sd]t|hst|nws)\b/g, (w) => w.toUpperCase())
+    .replace(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b/g,
+      (w) => w[0].toUpperCase() + w.slice(1));
+  const loadAlerts = async (zone, lat, lng) => {
+    const box = document.getElementById("alerts");
+    if (!box) return;
+    const icon = (n) => { const t = box.querySelector(`template.i-${n}`); return t ? t.innerHTML : ""; };
+    const urls = [`https://api.weather.gov/alerts/active?point=${lat},${lng}`];
+    if (zone) urls.push(`https://api.weather.gov/alerts/active?zone=${zone}`);
+    const got = await Promise.all(urls.map((u) => getJSON(u, NWS).catch(() => null)));
+    if (got.every((g) => g === null)) return; // couldn't check: show nothing rather than a false all-clear
+    const seen = new Set();
+    const alerts = got.flatMap((g) => (g && g.features) || []).map((f) => f.properties)
+      .filter((p) => p.status === "Actual" && p.messageType !== "Cancel" && !seen.has(p.event) && seen.add(p.event))
+      .sort((a, b) => (SEV[a.severity] ?? 4) - (SEV[b.severity] ?? 4));
+    const tpl = box.querySelectorAll("template");
+    const until = (p) => {
+      const e = p.ends || p.expires;
+      return e ? ` until ${new Date(e).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "";
+    };
+    const sign = document.getElementById("emails") ? ` <a href="#emails">Get alerts for this spot by email</a>` : "";
+    box.innerHTML = alerts.length
+      ? alerts.map((p) => `<details class="al ${kind(p.event)}"><summary>${icon("warn")}<span><b>${esc(p.event)}</b>${esc(until(p))}` +
+          `${p.parameters && p.parameters.NWSheadline ? `<small>${esc(sentence(p.parameters.NWSheadline[0]))}</small>` : ""}</span></summary>` +
+          `<div class="al-body">${esc((p.description || "").trim()).replace(/\* ([A-Z ]+)\.\.\./g, (m, k) => `<b>${k[0] + k.slice(1).toLowerCase()}:</b> `).replace(/\n\n/g, "<br><br>")}` +
+          `${p.instruction ? `<p><b>What to do:</b> ${esc(p.instruction)}</p>` : ""}<p class="note">${esc(p.areaDesc || "")} · National Weather Service</p></div></details>`).join("") +
+        `<p class="al-foot">Tap an alert for details.${sign}</p>`
+      : `<p class="al-clear">${icon("check")}No weather warnings or advisories here right now.${sign}</p>`;
+    tpl.forEach((t) => box.appendChild(t));
+    box.hidden = false;
   };
 
   const loadWaterTemp = async (st) => {
@@ -140,7 +167,8 @@
   if (live) {
     const { st, zone, office, wt, wl, lat, lng } = live.dataset;
     if (lat && lng) loadWeather(lat, lng);
-    if (zone && office) { loadForecast(zone, office); loadAlerts(zone); }
+    if (zone && office) loadForecast(zone, office);
+    loadAlerts(zone, lat, lng);
     if (wt === "1") loadWaterTemp(st);
     if (wl === "1") loadWaterLevel(st);
   }

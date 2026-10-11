@@ -295,3 +295,26 @@ h2.sec svg.ico { color: var(--sea); margin-right: 6px; }
   #pocket .pk-radio { margin-top: 6pt; padding: 5pt; border: 1px solid #999; }
   #pocket .pk-foot { margin-top: 4pt; color: #555; font-size: 7.5pt; }
 }
+/* Weather alerts banner on station pages */
+.alerts-banner { margin: 0 0 14px; }
+.alerts-banner details.al { border-radius: 12px; margin-bottom: 8px; border: 1px solid; overflow: hidden; }
+.alerts-banner summary { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer; list-style: none; }
+.alerts-banner summary::-webkit-details-marker { display: none; }
+.alerts-banner summary svg.ico { width: 24px; height: 24px; flex: 0 0 auto; margin-top: 1px; }
+.alerts-banner summary b { font-size: 1.05rem; }
+.alerts-banner summary small { display: block; font-size: .88rem; opacity: .9; margin-top: 2px; }
+.al-body { padding: 0 14px 12px 48px; font-size: .93rem; }
+.al.warning { background: #fde2e7; border-color: #e3577a; color: #6b0f26; }
+.al.advisory { background: #ffe9d6; border-color: #e58a3c; color: #5e2f05; }
+.al.watch { background: #fff5c7; border-color: #d4b02a; color: #4d3e00; }
+.al.statement { background: var(--foam); border-color: var(--sea-2); color: var(--ink); }
+.al .note { color: inherit; opacity: .8; }
+.al-foot, .al-clear { margin: 4px 0 0; font-size: .9rem; color: var(--muted); }
+.al-clear { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.al-clear svg.ico { color: #2f9e62; width: 20px; height: 20px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .al.warning { background: #3d1220; border-color: #b8405f; color: #ffd5df; }
+  :root:not([data-theme="light"]) .al.advisory { background: #3a230f; border-color: #b8702f; color: #ffe0c4; }
+  :root:not([data-theme="light"]) .al.watch { background: #362e0a; border-color: #a8901f; color: #fff0b3; }
+}
+@media print { .alerts-banner { display: none !important; } }
