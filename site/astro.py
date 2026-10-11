@@ -39,6 +39,51 @@ def sun(lat, lng, day, tz):
     return rise, sset
 
 
+def _moon_pos(ts, lat, lng):
+    """Moon altitude (degrees) and hour angle (radians) at a unix time. Low-precision series
+    (as in suncalc), good to about a degree, which puts rise/set/transit within a few minutes."""
+    rad = math.radians
+    d = ts / 86400 + 2440587.5 - 2451545.0
+    L = rad(218.316 + 13.176396 * d)
+    M = rad(134.963 + 13.064993 * d)
+    F = rad(93.272 + 13.229350 * d)
+    lon = L + rad(6.289) * math.sin(M)
+    b = rad(5.128) * math.sin(F)
+    e = rad(23.4397)
+    ra = math.atan2(math.sin(lon) * math.cos(e) - math.tan(b) * math.sin(e), math.cos(lon))
+    dec = math.asin(math.sin(b) * math.cos(e) + math.cos(b) * math.sin(e) * math.sin(lon))
+    H = rad(280.16 + 360.9856235 * d) + rad(lng) - ra
+    phi = rad(lat)
+    alt = math.asin(math.sin(phi) * math.sin(dec) + math.cos(phi) * math.cos(dec) * math.cos(H))
+    return math.degrees(alt), H
+
+
+def moon_times(lat, lng, day, tz, step=300):
+    """Moonrise, moonset, overhead (upper transit) and underfoot (lower transit) for a local day.
+    Returns a dict of lists of local datetimes; a day can have none or one of each."""
+    t0 = dt.datetime.combine(day, dt.time(0), tz).timestamp()
+    out = {"rise": [], "set": [], "over": [], "under": []}
+    prev = None
+    t = t0
+    while t <= t0 + 86400:
+        alt, H = _moon_pos(t, lat, lng)
+        cur = (alt - 0.13, math.sin(H), math.cos(H))
+        if prev:
+            a0, s0, c0 = prev
+            frac = lambda x0, x1: x0 / (x0 - x1) if x0 != x1 else 0
+            if a0 < 0 <= cur[0]:
+                out["rise"].append(t - step + frac(a0, cur[0]) * step)
+            elif a0 >= 0 > cur[0]:
+                out["set"].append(t - step + frac(a0, cur[0]) * step)
+            # Hour angle passes 0 (overhead) or pi (underfoot): sin(H) changes sign.
+            if (s0 < 0 <= cur[1]) or (s0 > 0 >= cur[1]):
+                key = "over" if c0 + cur[2] > 0 else "under"
+                out[key].append(t - step + frac(s0, cur[1]) * step)
+        prev = cur
+        t += step
+    return {k: [dt.datetime.fromtimestamp(x, tz) for x in v if t0 <= x < t0 + 86400] for k, v in out.items()}
+
+
 def moon(when):
     """(phase name, illuminated percent) at a timezone-aware datetime."""
     age = ((when - NEW_MOON).total_seconds() / 86400) % SYNODIC

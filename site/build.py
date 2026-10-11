@@ -119,7 +119,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "3"
+CSS_VER = "4"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -162,7 +162,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 {body}
 </main>
 <footer class="foot"><div class="wrap">
-<p>Tide predictions from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, refreshed every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
+<p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>. Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 <p><a href="{BASE}about/">About</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
@@ -366,6 +366,115 @@ def daylight_lows(f, days, tz, sun_by_day, limit=6):
     return out[:limit]
 
 
+COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+
+def compass(deg):
+    return COMPASS[round((deg or 0) / 22.5) % 16] if deg is not None else ""
+
+
+def currents_section(name, cur, week, tz):
+    """Slack water and peak flood/ebb for the nearest NOAA current station, for the week shown."""
+    if not cur:
+        return ""
+    meta, dist, events = cur
+    by_day = {}
+    for t, v, k in events:
+        when = dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        by_day.setdefault(when.date(), []).append((when, v, k))
+    rows = []
+    for d in week:
+        cells = []
+        for when, v, k in by_day.get(d, []):
+            if k == "S":
+                cells.append(f'<span class="ev slack"><b>Slack</b> {clock(when)}</span>')
+            else:
+                flood = k == "F"
+                cells.append(f'<span class="ev {"flood" if flood else "ebb"}"><b>{"Flood" if flood else "Ebb"}</b> '
+                             f'{clock(when)} <i>{abs(v):.1f} kn</i></span>')
+        rows.append(f'<tr data-day="{d.isoformat()}"><th scope="row">{day_label(d, True)}</th>'
+                    f'<td class="evs">{"".join(cells) or "—"}</td></tr>')
+    fl, eb = meta.get("flood"), meta.get("ebb")
+    dirs = (f" The flood runs toward the {compass(fl)} ({fl}°) and the ebb toward the {compass(eb)} ({eb}°)."
+            if fl is not None and eb is not None else "")
+    peak = max((abs(v) for _, v, k in events if k in "FE"), default=0)
+    depth = f" at {meta['depth']:.0f} ft depth" if meta.get("depth") not in (None, 999) else ""
+    return f"""
+<h2 id="currents">Tidal currents near {esc(name)}</h2>
+<p>From NOAA's current predictions for <strong>{esc(tidy(meta['name']))}</strong>{depth}, {dist:.1f} miles away.
+<b>Slack</b> is when the current turns and the water is calmest; <b>flood</b> runs in with the rising tide and <b>ebb</b> runs out
+with the falling tide. Times are the peak of each run, in knots.{dirs} The strongest current this week is {peak:.1f} knots.</p>
+<div class="scroll"><table class="tides week currents"><thead><tr><th>Day</th><th>Slack water and peak currents</th></tr></thead>
+<tbody>{"".join(rows)}</tbody></table></div>
+<p class="note">Current predictions can differ a lot over short distances: check the station location on NOAA before planning a passage.</p>"""
+
+
+def fishing_section(st, name, week, tz, f, sun_by_day):
+    """Solunar periods (moon overhead/underfoot = major, moonrise/moonset = minor) and a simple day rating."""
+    rows = []
+    for d in week:
+        mt = astro.moon_times(st["lat"], st["lng"], d, tz)
+        majors = sorted(mt["over"] + mt["under"])
+        minors = sorted(mt["rise"] + mt["set"])
+        ph, lit = astro.moon(dt.datetime.combine(d, dt.time(12), tz))
+        score = 2 if lit <= 10 or lit >= 90 else 1 if lit <= 25 or lit >= 75 else 0
+        rise, sset = sun_by_day.get(d, (None, None))
+        windows = [(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors] + \
+                  [(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors]
+        if rise and any(a - dt.timedelta(hours=1) <= x <= b + dt.timedelta(hours=1)
+                        for a, b in windows for x in (rise, sset)):
+            score += 1
+        turns = [dt.datetime.fromtimestamp(t, tz) for t, _, _ in f["by_day"].get(d, [])]
+        if any(a <= x <= b for a, b in windows[:len(majors)] for x in turns):
+            score += 1
+        label = ["Fair", "Fair", "Good", "Very good", "Excellent"][min(score, 4)]
+        span = lambda a, b: f"{clock(a)}–{clock(b)}"
+        maj = ", ".join(span(m - dt.timedelta(hours=1), m + dt.timedelta(hours=1)) for m in majors) or "—"
+        mnr = ", ".join(span(m - dt.timedelta(minutes=30), m + dt.timedelta(minutes=30)) for m in minors) or "—"
+        rows.append(f'<tr data-day="{d.isoformat()}"><th scope="row">{day_label(d, True)}</th>'
+                    f'<td><span class="rate r{min(score, 4)}">{label}</span></td><td>{maj}</td><td>{mnr}</td></tr>')
+    return f"""
+<h2 id="fishing">Best fishing times at {esc(name)}</h2>
+<p>Solunar periods for this spot: <b>major</b> periods (about two hours) are centred on the moon passing overhead or underfoot,
+and <b>minor</b> periods (about an hour) on moonrise and moonset. Days near the new and full moon rate higher, and so does a
+period that lines up with sunrise, sunset or a turn of the tide.</p>
+<div class="scroll"><table class="tides week fishing"><thead><tr><th>Day</th><th>Rating</th><th>Major periods</th><th>Minor periods</th></tr></thead>
+<tbody>{"".join(rows)}</tbody></table></div>
+<p class="note">Solunar times are a rule of thumb many anglers use, not a guarantee. Moving water around a tide change usually matters as much.</p>"""
+
+
+def live_section(st, name, ctx):
+    zone, buoy = ctx.get("zone"), ctx.get("buoy")
+    wt, wl = st["id"] in ctx["sensors"].get("wt", ()), st["id"] in ctx["sensors"].get("wl", ())
+    if not (zone or buoy or wt or wl):
+        return ""
+    attrs = f'data-st="{esc(st["id"])}" data-wt="{int(wt)}" data-wl="{int(wl)}"'
+    parts = []
+    if zone:
+        zid, zname, office = zone
+        attrs += f' data-zone="{esc(zid)}" data-office="{esc(office)}"'
+        parts.append(f'<div class="lv-fc"><h3>Marine forecast: {esc(zname)}</h3><div id="lv-alerts"></div>'
+                     f'<div id="lv-fc"><p>Loading the latest National Weather Service forecast… '
+                     f'<a href="https://marine.weather.gov/MapClick.php?zoneid={esc(zid)}">Open it on weather.gov</a>.</p></div></div>')
+    obs = []
+    if wt:
+        obs.append('<li id="lv-wt"><b>Water temperature</b> <span>—</span></li>')
+    if wl:
+        obs.append('<li id="lv-wl"><b>Water level now</b> <span>—</span></li>')
+    if buoy:
+        bid, bname, bdist = buoy
+        obs.append(f'<li><b>Nearest weather buoy</b> <span><a href="https://www.ndbc.noaa.gov/station_page.php?station={esc(bid.lower())}">'
+                   f'{esc(bname or bid)}</a> ({bdist} mi): waves, wind and water temperature</span></li>')
+    if obs:
+        parts.append(f'<ul class="facts lv-obs">{"".join(obs)}</ul>')
+    return f"""
+<section class="card live" id="live" {attrs}>
+<h2>Conditions at {esc(name)}</h2>
+{"".join(parts)}
+<p class="note">Live readings from NOAA and the National Weather Service, loaded when you open this page.</p>
+</section>"""
+
+
 def station_page(st, ctx):
     tz, events, days = ctx["tz"], ctx["events"], ctx["days"]
     name = st["pretty"]
@@ -429,7 +538,7 @@ def station_page(st, ctx):
         r, s = sun_by_day.get(d, (None, None))
         return [int(r.timestamp()), int(s.timestamp())] if r else [0, 0]
 
-    data = {"ev": [[int(t), v, k] for t, v, k in events],
+    data = {"ev": [[int(t), v, k] for t, v, k in events], "name": f"{name}, {st['state']}", "id": st["id"],
             "days": {d.isoformat(): [*map(int, bounds(d)), *sun_epochs(d), day_label(d)] for d in month}}
     title = f"{name}, {st['state']} Tide Chart & Tide Times"
     desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
@@ -447,16 +556,23 @@ def station_page(st, ctx):
 <p class="sunline">Sunrise {clock(rise) if rise else '—'} · Sunset {clock(sset) if sset else '—'} · {moon_cell(today)}</p>
 </section>
 
+{live_section(st, name, ctx)}
+
 <h2>Tide times this week</h2>
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
 <tbody>{week_rows}</tbody></table></div>
+
+{currents_section(name, ctx.get("cur"), week, tz)}
+
+{fishing_section(st, name, week, tz, f, sun_by_day)}
 
 <h2>About the tides at {esc(name)}</h2>
 {writeup(st, name, f, tz)}
 
 {dl_html}
 
-<h2>Tide table: {m_title}</h2>
+<h2 id="month">Tide table: {m_title}</h2>
+<p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button></p>
 <div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
 <tbody>{month_rows}</tbody></table></div>
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>
@@ -473,7 +589,7 @@ def station_page(st, ctx):
 <script type="application/json" id="tide-data">{json.dumps(data, separators=(",", ":"))}</script>
 """
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"])]
-    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("tide.js",))
+    return page(title, desc, st["path"], body, crumbs=crumbs, scripts=("tide.js", "live.js"))
 
 
 # ---------- other pages ----------
@@ -616,6 +732,24 @@ def main():
     for s in stations:
         cells.setdefault((int(s["lat"]), int(s["lng"])), []).append(s)
 
+    def load(path, default):
+        try:
+            return json.loads(path.read_text())
+        except (FileNotFoundError, ValueError):
+            return default
+
+    cur = load(DATA / "currents.json", {"stations": {}, "links": {}})
+    sensors = load(DATA / "sensors.json", {})
+    buoys = load(DATA / "buoys.json", {})
+    zones = load(ROOT / "collector" / "marine_zones.json", {})
+
+    def cur_for(sid):
+        link = cur["links"].get(sid)
+        if not link:
+            return None
+        events = load(DATA / "currents" / f"{link[0]}.json", None)
+        return (cur["stations"][link[0]], link[1], events) if events else None
+
     groups = {}
     built = 0
     for s in stations:
@@ -631,7 +765,8 @@ def main():
         near = [(d, o) for d, o in near if d <= 40][:6]
         today = built_at.astimezone(tz).date()
         ctx = {"tz": tz, "events": events, "days": days, "near": near, "today": today,
-               "ref": by_id.get(s["ref"])}
+               "ref": by_id.get(s["ref"]), "cur": cur_for(s["id"]), "sensors": sensors,
+               "buoy": buoys.get(s["id"]), "zone": zones.get(s["id"]) or None}
         write(s["path"] + "index.html", station_page(s, ctx))
         groups.setdefault(s["state"], []).append(s)
         built += 1
@@ -662,6 +797,9 @@ def main():
     else:
         write("robots.txt", "User-agent: *\nAllow: /\n")
     write(".nojekyll", "")
+    host = urlparse(SITE_URL).hostname or ""
+    if not host.endswith("github.io"):
+        write("CNAME", host + "\n")
     print(f"built {built} station pages, {len(groups)} states" + ("" if LAUNCHED else " (noindex)"))
 
 

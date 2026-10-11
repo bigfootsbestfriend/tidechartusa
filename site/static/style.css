@@ -101,3 +101,30 @@ a:focus-visible, input:focus-visible { outline: 3px solid var(--sea-2); outline-
   .chart .ax { font-size: 20px; }
   .chart .pt { r: 7px; }
 }
+
+/* Live conditions, currents, fishing, tools */
+.live { margin-top: 18px; }
+.live h2 { margin-top: 0; }
+.live h3 { font-size: 1rem; margin: 0 0 6px; }
+.fc { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0; }
+.fc dt { font-weight: 600; }
+.fc dd { margin: 0; }
+.adv, .alert { margin: 6px 0; padding: 6px 10px; border-radius: 8px; font-weight: 600; }
+.adv { background: var(--foam); }
+.alert { background: rgba(214, 51, 108, .12); color: var(--now); }
+.lv-obs { margin-top: 12px; }
+.ev.slack b { color: var(--muted); }
+.ev.flood b { color: var(--high); }
+.ev.ebb b { color: var(--low); }
+.rate { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .85rem; font-weight: 600; background: var(--bg); }
+.rate.r3, .rate.r4 { background: var(--foam); color: var(--sea); }
+.tools button { font: inherit; font-size: .9rem; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--sea); cursor: pointer; margin: 0 6px 6px 0; }
+@media (max-width: 560px) { .fc { grid-template-columns: 1fr; } .fc dd { margin-bottom: 6px; } }
+@media print {
+  header.top, footer.foot, .crumbs, .today, .live, .tools, #currents, #fishing, .near, script { display: none !important; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  .station > :not(#month):not(.scroll):not(h1):not(.sub):not(.note) { display: none; }
+  .station .scroll:has(.month) { display: block; }
+  .station .scroll:not(:has(.month)) { display: none; }
+}

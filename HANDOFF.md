@@ -20,6 +20,17 @@ from that station's predictions (tide type, typical range, spring tides, lowest/
 best daylight low tides, a month tide table, station details, nearby stations.
 Sun and moon are calculated locally (`site/astro.py`).
 
+## Boater and angler extras (added 2026-10-10)
+- `collector/extras.py` runs after fetch.py (optional step): nearest NOAA **current** station within 10 mi
+  (8 days of slack / max flood / max ebb), lists of stations with **live water temperature / water level**
+  sensors, nearest **NDBC buoy** within 40 mi, and each station's **NWS marine zone**
+  (`collector/marine_zones.json`, committed; only new stations are looked up, max 900 per run).
+- Station pages gain: "Conditions" card (marine forecast + active warnings, water temperature, measured
+  vs predicted water level, buoy link; all loaded live in the browser by `static/live.js`), "Tidal currents",
+  "Best fishing times" (solunar periods from `astro.moon_times` + a day rating), and buttons to print the
+  month table or download an .ics calendar of the tides (built in the browser, no extra files).
+- NDBC doesn't allow browser fetches, so buoys are a link only.
+
 ## Before launch (Mike)
 - Review a few station pages and the guide. The write-ups are computed from the data and phrased by Claude;
   Raptive wants meaningful human review, so read and adjust the wording in `writeup()` / `GUIDE`.

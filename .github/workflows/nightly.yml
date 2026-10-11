@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,8 +29,15 @@ jobs:
       # If more than 5% of stations fail, fetch.py exits non-zero and yesterday's site stays up.
       - name: Download NOAA predictions
         run: python3 collector/fetch.py --workers 3
+      # Currents, live-sensor lists, marine forecast zones and buoys. Optional: if it fails,
+      # pages are built without those sections.
+      - name: Download currents and marine extras
+        run: python3 collector/extras.py
+        continue-on-error: true
       - name: Build site
         run: python3 site/build.py
+        env:
+          SITE_URL: https://tidechartusa.com
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
