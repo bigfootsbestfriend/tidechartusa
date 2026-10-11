@@ -378,3 +378,9 @@ header.top nav a.nav-saved[hidden] { display: none; }
   .year-page section.ym table { font-size: 9pt; }
   .year-page .scroll { overflow: visible; }
 }
+details.embed { margin: 24px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+details.embed summary { cursor: pointer; font-weight: 700; color: var(--sea); }
+details.embed summary svg.ico { margin-right: 6px; }
+details.embed textarea { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+details.embed .copy { font: inherit; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--sea); color: var(--card); cursor: pointer; }
+@media print { details.embed { display: none !important; } }

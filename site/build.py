@@ -125,7 +125,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "20"
+CSS_VER = "21"
 
 
 def ga_tag():
@@ -185,7 +185,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -775,6 +775,12 @@ def station_page(st, ctx):
 </ul>
 {ref}
 {"<h2>Nearby tide stations</h2><ul class='near'>" + near + "</ul>" if near else ""}
+<details class="embed" id="embed"><summary>{ico("code")}Put these tides on your website</summary>
+<p>Free for marinas, bait shops, clubs, rentals and anyone else. Paste this where you want the tide card to appear:</p>
+<textarea readonly rows="4" onclick="this.select()">{esc(embed_code(st))}</textarea>
+<p><button type="button" class="copy" onclick="navigator.clipboard.writeText(this.parentNode.previousElementSibling.value);this.textContent='Copied'">Copy the code</button> <a href="{BASE}widget/">How it works</a></p>
+<iframe src="{BASE}embed/{st['id']}/" title="Preview" width="340" height="270" style="border:0;max-width:100%" loading="lazy"></iframe>
+</details>
 </article>
 <script type="application/json" id="tide-data">{json.dumps(data, separators=(",", ":"))}</script>
 """
@@ -870,6 +876,66 @@ def year_page(st, year, raw, tz):
             f"king tides and minus tides. Printable, from NOAA station {st['id']}.")
     crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (name, st["path"]), (f"{year} tide table", path)]
     return path, page(title, desc, path, body, crumbs=crumbs, scripts=("units.js",))
+
+
+EMBED_JS = """(() => {
+  const d = JSON.parse(document.getElementById("d").textContent), ev = d.ev, now = Date.now() / 1000;
+  const fmt = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: d.tz });
+  const day = (t) => new Date(t * 1000).toLocaleDateString([], { weekday: "short", timeZone: d.tz });
+  const h = (t) => { for (let i = 0; i + 1 < ev.length; i++) { const [a, x] = ev[i], [b, y] = ev[i + 1];
+    if (a <= t && t <= b) return x + (y - x) * (1 - Math.cos(Math.PI * (t - a) / (b - a))) / 2; } return null; };
+  const v = h(now), nx = ev.find((e) => e[0] > now);
+  if (v !== null && nx) document.getElementById("now").innerHTML = `Now <b>${v.toFixed(1)} ft</b>, ${nx[2] === "H" ? "rising" : "falling"}`;
+  const t0 = now - 6 * 3600, t1 = now + 18 * 3600, W = 300, H = 70, pts = [];
+  for (let t = t0; t <= t1; t += 900) { const y = h(t); if (y !== null) pts.push([t, y]); }
+  if (pts.length > 2) {
+    const lo = Math.min(...pts.map((p) => p[1])), hi = Math.max(...pts.map((p) => p[1])), sp = hi - lo || 1;
+    const X = (t) => (t - t0) / (t1 - t0) * W, Y = (y) => H - 6 - (y - lo) / sp * (H - 14);
+    const line = pts.map(([t, y]) => `${X(t).toFixed(1)},${Y(y).toFixed(1)}`).join(" L");
+    document.getElementById("c").innerHTML = `<path class="f" d="M0,${H} L${line} L${W},${H} Z"/><path class="l" d="M${line}"/>` +
+      `<line class="n" x1="${X(now)}" x2="${X(now)}" y1="0" y2="${H}"/><circle class="p" cx="${X(now)}" cy="${Y(v ?? lo)}" r="4"/>`;
+  }
+  document.getElementById("list").innerHTML = ev.filter((e) => e[0] > now).slice(0, 4).map(([t, y, k]) =>
+    `<li class="${k}"><b>${k === "H" ? "High" : "Low"}</b> ${day(t)} ${fmt(t)} <i>${y.toFixed(1)} ft</i></li>`).join("");
+})();"""
+
+
+def embed_page(st, events, tz):
+    """Tiny tide card other sites can put in an iframe. Not indexed; the embed code carries a normal link to us."""
+    now = dt.datetime.now(dt.timezone.utc).timestamp()
+    ev = [[int(t), v, k] for t, v, k in events if now - 86400 <= t <= now + 9 * 86400]
+    if isinstance(tz, ZoneInfo):
+        tzname = tz.key
+    else:  # fixed offset: IANA's Etc/GMT zones have the sign flipped
+        hours = int(tz.utcoffset(None).total_seconds() // 3600)
+        tzname = f"Etc/GMT{-hours:+d}" if hours else "UTC"
+    data = json.dumps({"ev": ev, "tz": tzname}, separators=(",", ":"))
+    name = esc(st["pretty"])
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>{name} tides</title><style>
+:root {{ --bg:#fff; --ink:#11232c; --mut:#536a75; --sea:#0b5c7a; --sea2:#1689ad; --foam:#d9f1f8; --low:#b5651d; --line:#d6e3e9; }}
+@media (prefers-color-scheme: dark) {{ :root:not(.light) {{ --bg:#122028; --ink:#e5f0f4; --mut:#9db3bd; --sea:#6cc7e3; --sea2:#3aa8cc; --foam:#12313d; --low:#f0a35e; --line:#24363f; }} }}
+:root.dark {{ --bg:#122028; --ink:#e5f0f4; --mut:#9db3bd; --sea:#6cc7e3; --sea2:#3aa8cc; --foam:#12313d; --low:#f0a35e; --line:#24363f; }}
+body {{ margin:0; font:14px/1.4 system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--ink); }}
+.w {{ padding:12px 14px; border:1px solid var(--line); border-radius:12px; }}
+h1 {{ font-size:15px; margin:0; }} #now {{ color:var(--mut); margin:2px 0 6px; }} #now b {{ color:var(--ink); }}
+svg {{ width:100%; height:70px; display:block; }} .f {{ fill:var(--foam); }} .l {{ fill:none; stroke:var(--sea2); stroke-width:2; }}
+.n {{ stroke:#d6336c; stroke-dasharray:3 3; }} .p {{ fill:#d6336c; }}
+ul {{ list-style:none; padding:0; margin:8px 0 6px; font-size:13px; }} li {{ display:flex; gap:8px; }} li b {{ width:36px; }} li i {{ margin-left:auto; }}
+li b {{ color:var(--sea); }} li.L b {{ color:var(--low); }} li i {{ color:var(--mut); font-style:normal; }}
+a {{ color:var(--sea); font-size:12px; text-decoration:none; }} a:hover {{ text-decoration:underline; }}
+</style><script>if(/[?&]theme=dark/.test(location.search))document.documentElement.className="dark";if(/[?&]theme=light/.test(location.search))document.documentElement.className="light";</script></head>
+<body><div class="w"><h1>{name} tides</h1><p id="now">Tide predictions from NOAA</p>
+<svg id="c" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><ul id="list"></ul>
+<a href="{SITE_URL}/{st["path"]}" target="_blank" rel="noopener">Full tide chart and forecast · Tide Chart USA</a></div>
+<script type="application/json" id="d">{data}</script><script>{EMBED_JS}</script></body></html>"""
+
+
+def embed_code(st):
+    name = esc(st["pretty"])
+    return (f'<iframe src="{SITE_URL}/embed/{st["id"]}/" title="{name} tides" width="340" height="270" '
+            f'style="border:0;max-width:100%" loading="lazy"></iframe>\n'
+            f'<p style="font-size:12px;margin:4px 0"><a href="{SITE_URL}/{st["path"]}">{name} tide chart</a> by Tide Chart USA</p>')
 
 
 def town_path(name, st):
@@ -981,6 +1047,7 @@ ICON = {
     "phone": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
     "warn": '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
     "check": '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    "code": '<path d="m8 8-5 4 5 4M16 8l5 4-5 4M13.5 5l-3 14"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 
@@ -1145,6 +1212,26 @@ Every email has a one-click unsubscribe link, which deletes your subscription. Y
 """
 
 
+WIDGET_PAGE = """
+<article class="prose">
+<h1>Free tide widget for your website</h1>
+<p>Show today's tides for your beach, harbor or river on your own site: the current water level, a small 24-hour
+tide curve and the next four highs and lows. It updates itself every day from NOAA predictions and works on any website
+builder that accepts an embed or HTML block (WordPress, Squarespace, Wix, Shopify and others).</p>
+<p>It's free for marinas, bait and tackle shops, fishing and boating clubs, vacation rentals, surf shops, harbor masters,
+schools and local news. There's no sign-up and no ads in the widget.</p>
+<h2>Get the code</h2>
+<ol><li>Find your spot below.</li><li>On its page, scroll to <b>Put these tides on your website</b> at the bottom and tap <b>Copy the code</b>.</li>
+<li>Paste it into an HTML or embed block on your site.</li></ol>
+<div class="search big"><input type="search" placeholder="Find your beach, harbor or town" aria-label="Find your spot" data-search data-suffix="#embed" autocomplete="off"><div class="results" data-results hidden></div></div>
+<h2>Good to know</h2>
+<ul><li>It's 340 pixels wide and shrinks to fit narrow columns. It follows your visitor's light or dark setting; add <code>?theme=light</code> or <code>?theme=dark</code> to the address in the code to fix one.</li>
+<li>Please keep the small link under the widget: it tells your visitors where the tides come from.</li>
+<li>Predictions, not live readings. Not for navigation.</li></ul>
+<p>Questions? Email <a href="mailto:hello@tidechartusa.com">hello@tidechartusa.com</a>.</p>
+</article>
+"""
+
 SAVED_PAGE = """
 <article class="prose saved-page">
 <h1>Your favorite spots</h1>
@@ -1304,6 +1391,7 @@ def main():
         if s["id"] in POPULAR:
             popular[s["id"]] = (s, tz, events, today)
         built_data[s["id"]] = (s, tz, events, today)
+        write(f"embed/{s['id']}/index.html", embed_page(s, events, tz))
         groups.setdefault(s["state"], []).append(s)
         built += 1
 
@@ -1338,6 +1426,8 @@ def main():
         "icons": [{"src": f"{BASE}static/icon-{n}.png", "sizes": f"{n}x{n}", "type": "image/png", "purpose": "any maskable"}
                   for n in (192, 512)]}, indent=1))
     write("sw.js", SW.replace("__BASE__", BASE).replace("__VER__", CSS_VER + "-" + built_at.strftime("%Y%m%d")))
+    write("widget/index.html", page("Free Tide Widget for Your Website", "Add today's tides for your beach or harbor to your own website: free, no sign-up.",
+                                    "widget/", WIDGET_PAGE.replace("<a href=\"mailto", "<a href=\"mailto"), scripts=("site.js",)))
     write("favorites/index.html", page("Favorite spots", "Your favorite tide stations.", "favorites/", SAVED_PAGE, scripts=("units.js",),
                                    extra_head='<meta name="robots" content="noindex">'))
     write("offline/index.html", page("Offline", "You're offline.", "offline/", OFFLINE, scripts=("units.js",),
@@ -1362,7 +1452,7 @@ def main():
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
-        urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/"] + \
+        urls = [""] + ["states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
                [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc></url>" for u in urls) + "</urlset>")
