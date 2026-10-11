@@ -80,13 +80,19 @@ def station(s):
 
 
 def english_name(key, sp):
+    """The English name most sources agree on (GBIF lists several, with the odd typo); first name of a list only."""
+    d = get(f"{GBIF}/species/{key}/vernacularNames?limit=200") or {}
+    names = [v["vernacularName"].split(",")[0].split(";")[0].strip() for v in d.get("results", [])
+             if v.get("language") in ("eng", "en") and v.get("vernacularName")]
     if sp.get("vernacularName"):
-        return sp["vernacularName"]
-    d = get(f"{GBIF}/species/{key}/vernacularNames?limit=100") or {}
-    for v in d.get("results", []):
-        if v.get("language") == "eng" and v.get("vernacularName"):
-            return v["vernacularName"]
-    return ""
+        names.append(sp["vernacularName"].split(",")[0].strip())
+    if not names:
+        return ""
+    count = {}
+    for n in names:
+        count.setdefault(n.lower(), []).append(n)
+    best = max(count.values(), key=lambda v: (len(v), -len(v[0])))
+    return best[0]
 
 
 # WoRMS answers already looked up for the app (scientific name -> [marine, brackish, fresh]), if present.
