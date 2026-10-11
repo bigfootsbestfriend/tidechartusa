@@ -121,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "8"
+CSS_VER = "9"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -474,7 +474,7 @@ def radio_block(nwr, county=None):
         tx_part += (f'<p class="note">To get alerts on a weather alert radio, program county code <b>{same[0]}</b> '
                     f'({esc(same[1])}).</p>')
     vhf = "".join(f"<li><b>Ch {c}</b> {esc(t)}</li>" for c, t in VHF)
-    return (f'<details class="radio"><summary>Marine radio: weather channels and VHF</summary>{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
+    return (f'<details class="radio" id="radio"><summary>{ico("radio")}Marine radio: weather channels and VHF</summary>{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
             f'<p class="note">Weather radio broadcasts are continuous; VHF channels are the US standard. '
             f'Local harbors and bridges may use others, so check your chart.</p></details>')
 
@@ -486,7 +486,7 @@ def signup_card(st, name, ctx):
             if ctx.get("zone") else "Weather warnings here (coastal flooding, high surf, storms)")
     return f"""
 <section class="card signup" id="emails">
-<h2>Get {esc(name)} tides by email</h2>
+<h2>{ico("mail")}Get {esc(name)} tides by email</h2>
 <form method="post" action="{ALERTS_API}/subscribe">
 <input type="hidden" name="station" value="{esc(st["id"])}"><input type="hidden" name="name" value="{esc(name)}">
 <input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
@@ -537,7 +537,7 @@ def live_section(st, name, ctx):
     wt, wl = st["id"] in ctx["sensors"].get("wt", ()), st["id"] in ctx["sensors"].get("wl", ())
     attrs = (f'data-st="{esc(st["id"])}" data-wt="{int(wt)}" data-wl="{int(wl)}" '
              f'data-lat="{st["lat"]:.4f}" data-lng="{st["lng"]:.4f}"')
-    parts = ['<div class="lv-wx"><h3>Weather</h3><div id="lv-wx"><p>Loading the National Weather Service forecast… '
+    parts = ['<div class="lv-wx"><div id="lv-wx"><p>Loading the National Weather Service forecast… '
              f'<a href="https://forecast.weather.gov/MapClick.php?lat={st["lat"]:.4f}&amp;lon={st["lng"]:.4f}">'
              'Open it on weather.gov</a>.</p></div></div>']
     if zone:
@@ -560,15 +560,24 @@ def live_section(st, name, ctx):
     parts.append(radio_block(nwr, ctx.get("county")))
     return f"""
 <section class="card live" id="live" {attrs}>
-<h2>Weather and conditions at {esc(name)}</h2>
+<h2>{ico("forecast")}Weather and conditions at {esc(name)}</h2>
 {"".join(parts)}
 <p class="note">Live readings from NOAA and the National Weather Service, loaded when you open this page.</p>
 </section>"""
 
 
-def tab(label, html_):
-    """A tab panel on station pages; empty sections get no tab."""
-    return f'<section class="tab" data-tab="{label}">{html_}</section>' if html_.strip() else ""
+def tab(label, icon, html_, pid=""):
+    """A tab panel on station pages (tide.js builds the tab bar from these); empty sections get no tab."""
+    if not html_.strip():
+        return ""
+    return (f'<section class="tab" data-tab="{label}"{f" id={chr(34)}{pid}{chr(34)}" if pid else ""}>'
+            f'<template class="tab-ico">{ico(icon)}</template>{html_}</section>')
+
+
+def jump_nav(items):
+    """Sticky row of icon links to each part of a station page."""
+    return '<nav class="jump" aria-label="On this page">' + "".join(
+        f'<a href="#{target}">{ico(icon)}<span>{label}</span></a>' for label, icon, target in items) + "</nav>"
 
 
 def station_page(st, ctx):
@@ -640,13 +649,30 @@ def station_page(st, ctx):
     desc = (f"Today's high and low tide times for {name}, {state}, with a tide chart, a 7-day tide table, "
             f"sunrise and sunset, and the month ahead. From NOAA station {st['id']}.")
     gmap = f"https://www.google.com/maps?q={st['lat']},{st['lng']}"
+    week_html = f"""<h2 id="week">Tide times this week</h2>
+<div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
+<tbody>{week_rows}</tbody></table></div>"""
+    month_html = f"""<h2 id="month">Tide table: {m_title}</h2>
+<p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button></p>
+<div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
+<tbody>{month_rows}</tbody></table></div>
+<p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>"""
+    cur_html = currents_section(name, ctx.get("cur"), week, tz)
+    fish_html = fishing_section(st, name, week, tz, f, sun_by_day)
+    jumps = [("Today", "chart", "today"), ("Weather", "forecast", "live"), ("Week", "week", "week")]
+    jumps += [("Currents", "current", "currents")] if cur_html else []
+    jumps += [("Fishing", "fish", "fishing")]
+    jumps += [("Low tides", "low", "lows")] if dl_html else []
+    jumps += [("Month", "cal", "month"), ("Radio", "radio", "radio")]
+    jumps += [("Email me", "mail", "emails")] if ALERTS_API else []
     body = f"""
 <article class="station">
 <h1>{esc(name)} tide chart</h1>
 <p class="sub">{esc(state)} · NOAA station {esc(st['id'])} · times in local time ({esc(dt.datetime.combine(today, dt.time(12), tz).strftime('%Z'))})</p>
+{jump_nav(jumps)}
 
 <section class="today card" id="today">
-<div class="today-head"><h2 id="today-title">Tides today, {day_label(today)}</h2><p class="now" id="now" hidden></p></div>
+<div class="today-head"><h2>{ico("chart")}<span id="today-title">Tides today, {day_label(today)}</span></h2><p class="now" id="now" hidden></p></div>
 <div class="daypick" id="daypick" hidden></div>
 <div id="chart">{chart}</div>
 <ul class="tlist" id="tlist">{today_rows}</ul>
@@ -657,21 +683,11 @@ def station_page(st, ctx):
 {live_section(st, name, ctx)}
 
 <div class="tabs" data-tabs>
-<section class="tab" data-tab="This week">
-<h2>Tide times this week</h2>
-<div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
-<tbody>{week_rows}</tbody></table></div>
-</section>
-{tab("Currents", currents_section(name, ctx.get("cur"), week, tz))}
-{tab("Fishing", fishing_section(st, name, week, tz, f, sun_by_day))}
-{tab("Low tides", dl_html)}
-<section class="tab" data-tab="Month" id="month-tab">
-<h2 id="month">Tide table: {m_title}</h2>
-<p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button></p>
-<div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
-<tbody>{month_rows}</tbody></table></div>
-<p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>
-</section>
+{tab("This week", "week", week_html)}
+{tab("Currents", "current", cur_html)}
+{tab("Fishing", "fish", fish_html)}
+{tab("Low tides", "low", dl_html)}
+{tab("Month", "cal", month_html, "month-tab")}
 </div>
 
 {signup_card(st, name, ctx)}
@@ -731,7 +747,15 @@ ICON = {
     "forecast": '<path d="M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.5 1.5A3.5 3.5 0 0 0 7 18z"/>',
     "temp": '<path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 14v3"/>',
     "cal": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    "week": '<path d="M4 6h16M4 12h16M4 18h10"/>',
+    "low": '<path d="M12 3v10m-4-4 4 4 4-4"/><path d="M3 19c2 0 2-2 4.5-2s2.5 2 4.5 2 2-2 4.5-2 2.5 2 4.5 2"/>',
+    "radio": '<rect x="3" y="9" width="18" height="12" rx="2"/><path d="M7 9l10-5"/><circle cx="15" cy="15" r="2.5"/><path d="M6 13h4M6 17h4"/>',
+    "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
+
+
+def ico(name, cls="ico"):
+    return f'<svg class="{cls}" viewBox="0 0 24 24" aria-hidden="true">{ICON[name]}</svg>'
 FEATURES = [("chart", "Today's tide chart", "A live curve with a now marker, the next high or low, and whether the water is rising or falling."),
             ("current", "Tidal currents", "Slack water and peak flood and ebb in knots, from the nearest NOAA current station."),
             ("fish", "Best fishing times", "Daily major and minor solunar periods with a simple rating for each day."),

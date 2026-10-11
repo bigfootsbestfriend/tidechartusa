@@ -110,8 +110,10 @@
   document.querySelectorAll("tr[data-day]").forEach((tr) => { if (tr.dataset.day < key) tr.remove(); });
 })();
 
-// Tabs for the long tables: buttons built from each panel's data-tab. Without JavaScript every panel shows.
+// Tabs for the long tables (buttons built from each panel's data-tab and icon), and the sticky
+// "jump to" row. Without JavaScript every panel shows and the jump links are plain anchors.
 (() => {
+  const showers = [];
   document.querySelectorAll("[data-tabs]").forEach((box) => {
     const panels = [...box.querySelectorAll(":scope > .tab")];
     if (panels.length < 2) return;
@@ -126,22 +128,59 @@
       const b = document.createElement("button");
       b.type = "button";
       b.setAttribute("role", "tab");
-      b.textContent = p.dataset.tab;
+      const t = p.querySelector("template.tab-ico");
+      if (t) b.appendChild(t.content.cloneNode(true));
+      b.appendChild(document.createTextNode(p.dataset.tab));
       b.addEventListener("click", () => show(i));
       bar.appendChild(b);
     });
     box.prepend(bar);
     box.classList.add("on");
     show(0);
-    // Links like #month or #fishing open their tab.
-    const open = () => {
-      const t = location.hash && box.querySelector(location.hash);
-      const i = t ? panels.findIndex((p) => p.contains(t)) : -1;
-      if (i >= 0) { show(i); t.scrollIntoView(); }
-    };
-    window.addEventListener("hashchange", open);
-    open();
+    showers.push((el) => {
+      const i = panels.findIndex((p) => p.contains(el));
+      if (i >= 0) show(i);
+      return i >= 0;
+    });
     // Printing always prints the month table.
     window.addEventListener("beforeprint", () => show(panels.findIndex((p) => p.id === "month-tab")));
   });
+
+  // Make a target visible (open its tab or its collapsed box) and scroll to it.
+  const reveal = (id, smooth) => {
+    const el = id && document.getElementById(id);
+    if (!el) return false;
+    showers.forEach((f) => f(el));
+    if (el.tagName === "DETAILS") el.open = true;
+    const tabs = el.closest("[data-tabs]");
+    (tabs && el.closest(".tab") ? tabs : el).scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    return true;
+  };
+  if (location.hash) reveal(location.hash.slice(1), false);
+  window.addEventListener("hashchange", () => reveal(location.hash.slice(1), true));
+
+  const nav = document.querySelector("nav.jump");
+  if (!nav) return;
+  const links = [...nav.querySelectorAll("a")];
+  links.forEach((a) => a.addEventListener("click", (e) => {
+    const id = a.getAttribute("href").slice(1);
+    if (reveal(id, true)) { e.preventDefault(); history.replaceState(null, "", "#" + id); mark(a); }
+  }));
+  const mark = (a) => links.forEach((l) => l.classList.toggle("here", l === a));
+  // Highlight the section on screen (tab sections count as the tab box).
+  const spots = links.map((a) => {
+    const el = document.getElementById(a.getAttribute("href").slice(1));
+    return el && (el.closest(".tab") ? null : el);
+  });
+  const tabsBox = document.querySelector("[data-tabs]");
+  addEventListener("scroll", () => {
+    const y = nav.getBoundingClientRect().bottom + 20;
+    let cur = null, best = -Infinity;
+    links.forEach((a, i) => {
+      const el = spots[i] || (tabsBox && tabsBox.querySelector(`.tab:not([hidden]) #${a.getAttribute("href").slice(1)}`) && tabsBox);
+      const top = el ? el.getBoundingClientRect().top : Infinity;
+      if (top <= y && top > best) { best = top; cur = a; }
+    });
+    if (cur && !cur.classList.contains("here")) { mark(cur); cur.scrollIntoView({ block: "nearest", inline: "nearest" }); }
+  }, { passive: true });
 })();

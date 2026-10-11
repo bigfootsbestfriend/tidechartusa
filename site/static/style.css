@@ -222,3 +222,18 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .tabs.on .tab > h2:first-child { font-size: 1.15rem; margin-top: 14px; }
 details.radio { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 details.radio summary { cursor: pointer; font-weight: 700; color: var(--sea); }
+/* Section icons and the jump row */
+svg.ico { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.15em; }
+.station h2 > svg.ico, .card h2 > svg.ico { width: 1.25em; height: 1.25em; padding: 4px; margin-right: 8px; border-radius: 8px; background: var(--foam); color: var(--sea); box-sizing: content-box; vertical-align: -0.35em; }
+nav.jump { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 10px -16px 14px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+nav.jump::-webkit-scrollbar { display: none; }
+nav.jump a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); text-decoration: none; font-size: .9rem; font-weight: 600; }
+nav.jump a svg.ico { color: var(--sea); }
+nav.jump a:hover { border-color: var(--sea-2); }
+nav.jump a.here { background: var(--sea); border-color: var(--sea); color: var(--card); }
+nav.jump a.here svg.ico { color: var(--card); }
+.station [id], .station .tabs { scroll-margin-top: 64px; }
+.tabbar { position: static; }
+.tabbar button { display: inline-flex; align-items: center; gap: 6px; }
+details.radio summary svg.ico { margin-right: 6px; }
+@media print { nav.jump { display: none !important; } }
