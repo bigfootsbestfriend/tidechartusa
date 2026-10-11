@@ -121,7 +121,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "7"
+CSS_VER = "8"
 
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
@@ -474,9 +474,9 @@ def radio_block(nwr, county=None):
         tx_part += (f'<p class="note">To get alerts on a weather alert radio, program county code <b>{same[0]}</b> '
                     f'({esc(same[1])}).</p>')
     vhf = "".join(f"<li><b>Ch {c}</b> {esc(t)}</li>" for c, t in VHF)
-    return (f'<div class="radio">{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
+    return (f'<details class="radio"><summary>Marine radio: weather channels and VHF</summary>{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
             f'<p class="note">Weather radio broadcasts are continuous; VHF channels are the US standard. '
-            f'Local harbors and bridges may use others, so check your chart.</p></div>')
+            f'Local harbors and bridges may use others, so check your chart.</p></details>')
 
 
 def signup_card(st, name, ctx):
@@ -566,6 +566,11 @@ def live_section(st, name, ctx):
 </section>"""
 
 
+def tab(label, html_):
+    """A tab panel on station pages; empty sections get no tab."""
+    return f'<section class="tab" data-tab="{label}">{html_}</section>' if html_.strip() else ""
+
+
 def station_page(st, ctx):
     tz, events, days = ctx["tz"], ctx["events"], ctx["days"]
     name = st["pretty"]
@@ -613,7 +618,7 @@ def station_page(st, ctx):
     dl = daylight_lows(f, days[start:], tz, sun_by_day)
     dl_html = ""
     if dl:
-        dl_html = ("<h2>Best daylight low tides in the next two weeks</h2><p>The lowest water that falls between "
+        dl_html = ("<h2 id=\"lows\">Best daylight low tides in the next two weeks</h2><p>The lowest water that falls between "
                    "sunrise and sunset, for tide pooling and beachcombing.</p><ol class='dl'>"
                    + "".join(f"<li><b>{ft(v)}</b> at {clock(dt.datetime.fromtimestamp(t, tz))} on "
                              f"{day_label(dt.datetime.fromtimestamp(t, tz).date())}</li>" for v, t in dl) + "</ol>")
@@ -642,33 +647,37 @@ def station_page(st, ctx):
 
 <section class="today card" id="today">
 <div class="today-head"><h2 id="today-title">Tides today, {day_label(today)}</h2><p class="now" id="now" hidden></p></div>
+<div class="daypick" id="daypick" hidden></div>
 <div id="chart">{chart}</div>
 <ul class="tlist" id="tlist">{today_rows}</ul>
-<p class="sunline">Sunrise {clock(rise) if rise else '—'} · Sunset {clock(sset) if sset else '—'} · {moon_cell(today)}</p>
+<div class="dayextra" id="dayextra"></div>
+<p class="sunline" id="sunline">Sunrise {clock(rise) if rise else '—'} · Sunset {clock(sset) if sset else '—'} · {moon_cell(today)}</p>
 </section>
 
 {live_section(st, name, ctx)}
 
+<div class="tabs" data-tabs>
+<section class="tab" data-tab="This week">
 <h2>Tide times this week</h2>
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
 <tbody>{week_rows}</tbody></table></div>
-
-{currents_section(name, ctx.get("cur"), week, tz)}
-
-{fishing_section(st, name, week, tz, f, sun_by_day)}
-
-{signup_card(st, name, ctx)}
-
-<h2>About the tides at {esc(name)}</h2>
-{writeup(st, name, f, tz)}
-
-{dl_html}
-
+</section>
+{tab("Currents", currents_section(name, ctx.get("cur"), week, tz))}
+{tab("Fishing", fishing_section(st, name, week, tz, f, sun_by_day))}
+{tab("Low tides", dl_html)}
+<section class="tab" data-tab="Month" id="month-tab">
 <h2 id="month">Tide table: {m_title}</h2>
 <p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button></p>
 <div class="scroll"><table class="tides month"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th></tr></thead>
 <tbody>{month_rows}</tbody></table></div>
 <p class="note">Heights are in feet above mean lower low water (MLLW), the zero line on most US nautical charts. A minus height means the water drops below that line.</p>
+</section>
+</div>
+
+{signup_card(st, name, ctx)}
+
+<h2>About the tides at {esc(name)}</h2>
+{writeup(st, name, f, tz)}
 
 <h2>Station details</h2>
 <ul class="facts">

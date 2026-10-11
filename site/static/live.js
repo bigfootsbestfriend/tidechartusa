@@ -127,7 +127,7 @@
       const periods = (fc.properties.periods || []).slice(0, 4);
       if (!periods.length) return;
       box.innerHTML = `<div class="wx">${periods.map((q) => `<div class="wx-p">
-        ${q.icon ? `<img src="${esc(q.icon.replace("size=medium", "size=small"))}" alt="" width="56" height="56" loading="lazy">` : ""}
+        ${q.icon ? `<img src="${esc(q.icon.replace("size=medium", "size=large"))}" alt="" width="56" height="56" loading="lazy">` : ""}
         <b>${esc(q.name)}</b><span class="t">${q.temperature}°${esc(q.temperatureUnit)}</span>
         <span>${esc(q.shortForecast)}</span><span class="w">Wind ${esc(q.windDirection)} ${esc(q.windSpeed)}</span></div>`).join("")}</div>
         <p class="note">National Weather Service forecast for the nearest land point.

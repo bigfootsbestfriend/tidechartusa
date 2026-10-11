@@ -122,11 +122,12 @@ a:focus-visible, input:focus-visible { outline: 3px solid var(--sea-2); outline-
   background: var(--card); color: var(--sea); cursor: pointer; margin: 0 6px 6px 0; }
 @media (max-width: 560px) { .fc { grid-template-columns: 1fr; } .fc dd { margin-bottom: 6px; } }
 @media print {
-  header.top, footer.foot, .crumbs, .today, .live, .tools, #currents, #fishing, .near, script { display: none !important; }
+  header.top, footer.foot, .crumbs, .tools, .tabbar, script { display: none !important; }
   body { background: #fff; color: #000; font-size: 11pt; }
-  .station > :not(#month):not(.scroll):not(h1):not(.sub):not(.note) { display: none; }
-  .station .scroll:has(.month) { display: block; }
-  .station .scroll:not(:has(.month)) { display: none; }
+  .station > :not(h1):not(.sub):not(.tabs) { display: none !important; }
+  .tabs > .tab:not(#month-tab) { display: none !important; }
+  #month-tab { display: block !important; }
+}
 }
 
 /* Home page */
@@ -180,11 +181,14 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .spot li { white-space: nowrap; }
 .waves { bottom: -2px; } .spot li b { font-size: .8em; }
 /* Weather and marine radio */
-.wx { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.wx-p { display: flex; flex-direction: column; gap: 2px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; font-size: .9rem; }
-.wx-p img { border-radius: 8px; margin-bottom: 4px; }
-.wx-p .t { font-size: 1.3rem; font-weight: 700; }
-.wx-p .w { color: var(--muted); }
+.wx { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 640px) { .wx { grid-template-columns: repeat(2, 1fr); } }
+.wx-p { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 10px 12px;
+  border: 1px solid var(--line); border-radius: 14px; font-size: .9rem; background: var(--bg); }
+.wx-p img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 10px; margin-bottom: 6px; }
+.wx-p b { font-size: .95rem; }
+.wx-p .t { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.wx-p .w { color: var(--muted); font-size: .85rem; }
 .radio ul { list-style: none; padding: 0; margin: 0 0 10px; }
 .radio li { padding: 5px 0; border-bottom: 1px solid var(--line); }
 .radio li i { color: var(--muted); font-style: normal; }
@@ -198,3 +202,23 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .signup .row input { flex: 1 1 220px; font: inherit; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .signup button { font: inherit; font-weight: 700; padding: 11px 18px; border: 0; border-radius: 10px; background: var(--sea); color: var(--card); cursor: pointer; }
 .signup .hp { position: absolute; left: -9999px; }
+
+/* Day picker on the today card */
+.daypick { display: flex; gap: 6px; overflow-x: auto; margin: 4px 0 10px; padding-bottom: 2px; scrollbar-width: none; }
+.daypick button { flex: 1 0 auto; min-width: 54px; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font: inherit; font-weight: 700; font-size: .9rem; padding: 7px 8px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.daypick button small { font-weight: 400; color: var(--muted); font-size: .78rem; }
+.daypick button[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--card); }
+.daypick button[aria-pressed="true"] small { color: var(--card); opacity: .85; }
+.dayextra p { margin: 6px 0; font-size: .92rem; }
+.dayextra .evs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.dayextra .evs .ev { white-space: nowrap; }
+/* Tabs for the long tables */
+.tabs.on { margin-top: 28px; }
+.tabbar { display: flex; gap: 4px; overflow-x: auto; border-bottom: 2px solid var(--line); margin-bottom: 4px; scrollbar-width: none; position: sticky; top: 0; background: var(--bg); z-index: 2; }
+.tabbar button { font: inherit; font-weight: 600; padding: 10px 14px; border: 0; background: none; color: var(--muted); cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.tabbar button[aria-selected="true"] { color: var(--sea); border-bottom-color: var(--sea); }
+.tabs.on .tab > h2:first-child { font-size: 1.15rem; margin-top: 14px; }
+details.radio { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+details.radio summary { cursor: pointer; font-weight: 700; color: var(--sea); }
