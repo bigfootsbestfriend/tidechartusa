@@ -1564,6 +1564,103 @@ an hour after sunrise and sunset. Each spot's own page lists every low tide. Not
                 "tide-pools/", body, crumbs=[("Home", ""), ("Tide pools", "tide-pools/")], scripts=("units.js", "site.js"))
 
 
+# Razor clam beaches. Facts from WDFW and ODFW pages, checked Oct 2026.
+CLAM_BEACHES = [  # name, state, open-coast NOAA station id (not the nearer bay and slough stations), boundaries
+    ("Long Beach", "WA", "9440574", "From the Columbia River north to the mouth of Willapa Bay."),
+    ("Twin Harbors", "WA", "9441102", "From Willapa Bay north to the south jetty at the mouth of Grays Harbor."),
+    ("Copalis", "WA", "9441156", "From the north jetty at Grays Harbor to the Copalis River."),
+    ("Mocrocks", "WA", "9441627", "From the Copalis River to the Quinault Indian Reservation."),
+    ("Kalaloch", "WA", "9442396", "From the South Beach campground north to Olympic National Park Beach Trail 3."),
+    ("Clatsop beaches", "OR", "9440574", "From the Columbia River south past Gearhart and Seaside to Tillamook Head: about 95% of Oregon's razor clamming."),
+]
+CLAM_RULES = {
+    "WA": ('<a href="https://wdfw.wa.gov/fishing/shellfish/razorclams/seasons_set.html" rel="noopener">WDFW razor clam seasons</a>',
+           "Washington digs only on days WDFW opens, after state marine toxin tests come back clean, usually a week or less before each "
+           "series. Openings get postponed when domoic acid is high. You need a Washington razor clam license."),
+    "OR": ('<a href="https://myodfw.com/recreation-report" rel="noopener">ODFW Recreation Report</a> and the '
+           '<a href="https://www.oregon.gov/oda/programs/foodsafety/shellfish/pages/shellfishclosures.aspx" rel="noopener">ODA shellfish safety page</a> '
+           '(hotline 800-448-2474)',
+           "Oregon needs a shellfish license. The limit is the first 15 clams dug, whatever their size or condition. North of "
+           "Tillamook Head, razor clamming is closed July 15 to September 30 every year to protect young clams; biotoxin closures "
+           "can come at any time."),
+}
+CLAM_TIPS = [
+    ("clock", "Start before the low", "Most clams are dug in the hour or two before low tide, as the water drops."),
+    ("waves", "Look for shows", "A dimple or hole in wet sand near the surf line marks a clam. Dig fast and on the ocean side."),
+    ("low", "Lower is better", "The lower the tide, the more beach is uncovered. Minus tides are best; swell can spoil a good tide."),
+    ("warn", "Never eat from a closed beach", "Domoic acid and PSP toxins can't be cooked out. Only dig when the state says the beach is open."),
+]
+CLAM_CUT = 0.5  # lows at or below this many feet (MLLW) count as clam tides
+
+
+def clam_tides(raws, tz, code, today, days=150):
+    """Low tides good for razor clams over the next `days`: [(datetime, height)].
+
+    Washington's good tides are in the afternoon and evening from October to mid-March and in the morning after (WDFW).
+    Oregon has no time rule, but north of Tillamook Head is closed July 15 to September 30."""
+    end = today + dt.timedelta(days=days)
+    out = []
+    for year, raw in raws.items():
+        for t, v, k in raw:
+            if k != "L" or v > CLAM_CUT:
+                continue
+            try:
+                w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+            except ValueError:
+                continue
+            d = w.date()
+            if not today <= d < end:
+                continue
+            if code == "WA":
+                pm_season = d.month >= 10 or d.month <= 2 or (d.month == 3 and d.day <= 15)
+                if (w.hour >= 12) != pm_season or 6 <= d.month <= 9:
+                    continue
+            out.append((w, v))
+    return sorted(out)
+
+
+def clam_page(beaches, today):
+    """Razor clam tides for Washington and Oregon beaches."""
+    sections = []
+    for code, label in (("WA", "Washington"), ("OR", "Oregon")):
+        rows = [b for b in beaches if b[1] == code]
+        if not rows:
+            continue
+        where, rule = CLAM_RULES[code]
+        parts = [f'<h2 id="{code.lower()}">{ico("waves")} {label}</h2><p class="tip">{ico("warn")} <b>Check before you go:</b> {where}. {rule}</p>']
+        for name, _, note, st, tz, tides in rows:
+            closed = lambda w: code == "OR" and name.startswith("Clatsop") and (dt.date(w.year, 7, 15) <= w.date() <= dt.date(w.year, 9, 30))
+            tides = [x for x in tides if not closed(x[0])]
+            trs = "".join(
+                f'<tr><th scope="row">{w:%a %b} {w.day}</th><td><b>{clock(w)}</b></td><td>{ft(v)}</td>'
+                f'<td>{clock(w - dt.timedelta(hours=2))}–{clock(w)}</td></tr>' for w, v in tides[:16])
+            parts.append(
+                f'<h3>{esc(name)}</h3><p>{esc(note)} Times from the open-coast <a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a> station.</p>'
+                + (f'<div class="scroll"><table class="tides kt-wins"><thead><tr><th>Day</th><th>Low tide</th><th>Height</th><th>Best digging</th></tr></thead>'
+                   f'<tbody>{trs}</tbody></table></div>' if trs else "<p>No clam tides in the next few months.</p>"))
+        sections.append("".join(parts))
+    body = f"""
+<article class="kt">
+<h1>Razor clam tides: Washington and Oregon</h1>
+<p class="lede">Razor clams are dug on the lowest tides, in the hour or two before low water. Here are the coming clam tides
+(low tides at or below {ft(CLAM_CUT)}) for each razor clam beach, from NOAA predictions. In Washington they're the afternoon and
+evening lows from October to mid-March and the morning lows after that, the tides WDFW picks its digs from.</p>
+<p class="tip">{ico("warn")} <b>These are tides, not openings.</b> A beach is only open when the state says so, and openings are
+cancelled when marine toxins are high. Always check the official links for your state below before you go.</p>
+<p class="tools"><a href="#wa">Washington beaches</a> · <a href="#or">Oregon beaches</a> · <a href="{BASE}tides/washington/">Washington tides</a> · <a href="{BASE}tides/oregon/">Oregon tides</a></p>
+{"".join(sections)}
+<h2>{ico("pool")} Razor clam tips</h2>
+{tipcards(CLAM_TIPS, "safe")}
+<p class="note">Times are local. Heights are feet above mean lower low water (MLLW); below zero is a minus tide. Predictions don't
+include swell or wind, which can keep the water higher. Season details come from WDFW and ODFW and can change; their pages are the
+final word. Not for navigation.</p>
+</article>"""
+    return page(f"Razor Clam Tides {kingtides.season_label(today)}: Washington & Oregon Digging Times",
+                "Razor clam digging tides for Long Beach, Twin Harbors, Copalis, Mocrocks and Oregon's Clatsop beaches: low tide times, "
+                "heights and the best hours to dig, with links to WDFW and ODFW openings.",
+                "razor-clams/", body, crumbs=[("Home", ""), ("Razor clams", "razor-clams/")], scripts=("units.js", "site.js"))
+
+
 EMBED_JS = """(() => {
   const d = JSON.parse(document.getElementById("d").textContent), ev = d.ev, now = Date.now() / 1000;
   const fmt = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: d.tz });
@@ -1740,6 +1837,7 @@ stations with their own long-term measurements; the rest are calculated from the
 {list_tools(len(stations), refs)}
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 {f'<p class="tip">{ico("cal")} <a href="{BASE}{kt_path(code)}">King tide dates for {esc(state)}</a>: when the year\'s highest tides arrive at every spot.</p>' if kings else ""}
+{f'<p class="tip">{ico("waves")} <a href="{BASE}razor-clams/#{code.lower()}">Razor clam tides</a> for {esc(state)}\'s clam beaches.</p>' if code in ("WA", "OR") else ""}
 {f'<p class="tip">{ico("pool")} <a href="{BASE}{tp_path(code)}">Best tide pool days in {esc(state)}</a>: the lowest daylight tides at every spot.</p>' if pools else ""}
 <ul class="stations">{items}</ul>
 {town_list}"""
@@ -2208,7 +2306,7 @@ def main():
 
     years = sorted(int(p.name) for p in YEAR_DIR.glob("*") if p.name.isdigit()) if YEAR_DIR.exists() else []
     year_pages = []
-    kt_by_state, tp_by_state = {}, {}
+    kt_by_state, tp_by_state, clam_cands = {}, {}, {}
     groups = {}
     popular = {}
     built_data = {}
@@ -2237,6 +2335,8 @@ def main():
         if ctx["kt"]:
             kt_by_state.setdefault(s["state"], []).append((s, ctx["kt"]))
         ctx["tp"] = lowtides.lows_for(raws, tz, s["lat"], s["lng"], today) if raws else None
+        if raws and s["id"] in {b[2] for b in CLAM_BEACHES}:
+            clam_cands[s["id"]] = (s, tz, raws, today)
         if ctx["tp"]:
             tp_by_state.setdefault(s["state"], []).append((s, ctx["tp"]))
         write(s["path"] + "index.html", station_page(s, ctx))
@@ -2336,6 +2436,14 @@ def main():
             kt_pages.append(path)
         write("tide-pools/index.html", tp_hub(tp_by_state, spots, tp_today))
         kt_pages.append("tide-pools/")
+    beaches = []
+    for name, code, sid, note in CLAM_BEACHES:
+        if sid in clam_cands:
+            s, tz, raws, today = clam_cands[sid]
+            beaches.append((name, code, note, s, tz, clam_tides(raws, tz, code, today)))
+    if beaches:
+        write("razor-clams/index.html", clam_page(beaches, built_at.date()))
+        kt_pages.append("razor-clams/")
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
     # Bing Webmaster Tools site ownership (the account's code, public by design).

@@ -173,3 +173,13 @@ Adelphi/Landover MD, Hartford CT, Boston neighbourhoods) and a few weren't towns
   they're out of the sitemap and search). The list is written to data/town_pages_dropped.txt on each build.
 - About 450 of 2,100 town pages dropped. Check Search Console's Pages report in a few weeks: if "Crawled - currently not indexed"
   is large for town or year pages, prune further the same way.
+
+## Razor clams (2026-10-12)
+
+- `/razor-clams/`: coming clam tides (lows <= +0.5 ft, `CLAM_CUT`) for Long Beach, Twin Harbors, Copalis, Mocrocks, Kalaloch (WA) and
+  the Clatsop beaches (OR), with a "best digging" window of 2 hours before the low. WA keeps PM lows Oct to mid-March and AM lows
+  after, none June-Sept (WDFW's pattern); Clatsop drops July 15-Sept 30 (annual closure north of Tillamook Head).
+- `CLAM_BEACHES` uses open-coast stations picked by hand (Columbia River N. Jetty, Westport, Point Brown, Point Grenville, La Push),
+  not the nearer bay/slough stations. Point Grenville matched WDFW's published Mocrocks dig tides to the minute.
+- The page says plainly these are tides, not openings, and links WDFW seasons, the ODFW Recreation Report and ODA shellfish safety.
+  Re-check `CLAM_RULES` facts each fall. WA/OR state pages link to it.
