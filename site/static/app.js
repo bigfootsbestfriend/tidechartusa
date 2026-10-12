@@ -76,7 +76,17 @@
     deferred = e;
     if (!standalone) installBtns().forEach((b) => (b.hidden = false));
   });
-  window.addEventListener("appinstalled", () => installBtns().forEach((b) => (b.hidden = true)));
+  window.addEventListener("appinstalled", () => {
+    installBtns().forEach((b) => (b.hidden = true));
+    if (window.gtag) window.gtag("event", "app_install");
+  });
+  // Count opens of the installed app (once per session)
+  try {
+    if (standalone && window.gtag && !sessionStorage.getItem("app-open")) {
+      sessionStorage.setItem("app-open", "1");
+      window.gtag("event", "app_open");
+    }
+  } catch {}
   if (ios && !standalone) installBtns().forEach((b) => (b.hidden = false));
   installBtns().forEach((b) => b.addEventListener("click", async () => {
     if (deferred) { deferred.prompt(); await deferred.userChoice; deferred = null; b.hidden = true; return; }

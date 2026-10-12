@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "38"
+CSS_VER = "39"
 
 
 def ga_tag():
