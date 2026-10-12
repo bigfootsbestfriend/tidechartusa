@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "37"
+CSS_VER = "38"
 
 
 def ga_tag():
@@ -1290,8 +1290,9 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 <ol>{big_list}</ol>
 <h2 id="spots">King tide times for your spot</h2>
 {kt_tools(months, len(spot_rows))}
-<div class="scroll"><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
+<div class="scroll kt-box" data-kt-box><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
 <tbody>{"".join(r for _, _, r in sorted(spot_rows))}</tbody></table></div>
+<button type="button" class="kt-more" data-kt-more hidden>Show all {len(spot_rows)} spots</button>
 <h2>{ico("camera")} Photograph the king tides</h2>
 {tipcards(KT_PHOTO_TIPS, "photo")}
 {prog_html}

@@ -87,6 +87,16 @@
     q.addEventListener("input", apply);
     sort.addEventListener("change", apply);
     chips.forEach((c) => c.addEventListener("click", () => { month = c.dataset.m; chips.forEach((x) => x.classList.toggle("on", x === c)); apply(); }));
+    // Tall table lives in a scroll box; "Show all" lets it grow to full length.
+    const box = document.querySelector("[data-kt-box]"), more = document.querySelector("[data-kt-more]");
+    if (box && more && box.scrollHeight > box.clientHeight + 40) {
+      more.hidden = false;
+      more.addEventListener("click", () => { const open = box.classList.toggle("open"); more.textContent = open ? "Show fewer" : `Show all ${rows.length} spots`; if (!open) box.scrollIntoView({ block: "nearest" }); });
+    }
+    if (box) box.addEventListener("scroll", () => {
+      box.classList.toggle("scrolled", box.scrollTop > 4);
+      box.classList.toggle("end", box.scrollTop + box.clientHeight >= box.scrollHeight - 4);
+    }, { passive: true });
     // The page is built soonest-first, so nothing moves or hides until the visitor uses a control (search engines see every row).
   });
 
