@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "33"
+CSS_VER = "34"
 
 
 def ga_tag():
@@ -1391,9 +1391,13 @@ def town_path(name, st):
     return f"tides-near/{slugify(name)}-{st.lower()}/"
 
 
-def town_page(town, near, nearby_towns):
-    """'Tides near <town>': today's tides at the closest NOAA stations, which is what people searching a town want."""
+def town_page(town, near, nearby_towns, aka=(), region=False):
+    """'Tides near <town>': today's tides at the closest NOAA stations, which is what people searching a town want.
+
+    aka: other names people search for it (OCMD, St. Pete). region: an island, bay or stretch of coast, so cards
+    show each station's town rather than a distance from the middle of it."""
     tname, tst = town[0], town[1]
+    also = f" ({aka[0]})" if aka else ""
     state = STATES.get(tst, tst)
     cards, station_highs = [], []
     for d, (s, tz, events, today) in near:
@@ -1403,10 +1407,10 @@ def town_page(town, near, nearby_towns):
         times = "".join(f'<li class="{k}"><b title="{"High" if k == "H" else "Low"}">{"▲" if k == "H" else "▼"}</b> {clock(w)} <i>{ft(v)}</i></li>'
                         for w, v, k in evs)
         cards.append(f'<a class="spot" href="{BASE}{s["path"]}"><span class="spot-name">{esc(s["pretty"])}'
-                     f'<small>{d:.1f} miles from {esc(tname)}</small></span>{spark(events, a, a + 86400)}<ul>{times}</ul></a>')
+                     f'<small>{(esc(s["town"][0]) if s.get("town") else "") if region else f"{d:.1f} miles from {esc(tname)}"}</small></span>{spark(events, a, a + 86400)}<ul>{times}</ul></a>')
     first_d, (first, ftz, _, ftoday) = near[0]
-    facts = [f"The closest NOAA tide station to {esc(tname)} is <a href=\"{BASE}{first['path']}\">{esc(first['pretty'])}</a>, "
-             f"{first_d:.1f} miles away."]
+    facts = [] if region else [f"The closest NOAA tide station to {esc(tname)} is <a href=\"{BASE}{first['path']}\">{esc(first['pretty'])}</a>, "
+                               f"{first_d:.1f} miles away."]
     # Compare the same high tide everywhere: the closest station's first high today, and each other station's
     # high nearest to it (within 5 hours, so it's the same tide arriving, not the next one).
     a0 = dt.datetime.combine(ftoday, dt.time(0), ftz).timestamp()
@@ -1430,20 +1434,20 @@ def town_page(town, near, nearby_towns):
     cta = (f'<p class="cta-box">{ico("mail")} <span>Get <a href="{BASE}{first["path"]}#emails">{esc(first["pretty"])} tides by email</a> '
            f'every Thursday, with a heads-up before the best low tides and when warnings are issued.</span></p>') if ALERTS_API else ""
     body = f"""
-<h1>Tides near {esc(tname)}, {esc(state)}</h1>
-<p class="lede">High and low tides today, {day_label(ftoday)}, at the {len(near)} NOAA tide station{"s" if len(near) != 1 else ""} closest to {esc(tname)}.
+<h1>Tides {"around" if region else "near"} {esc(tname)}{esc(also)}, {esc(state)}</h1>
+<p class="lede">High and low tides today, {day_label(ftoday)}, at {f"{len(near)} NOAA tide stations around {esc(tname)}" if region else f"the {len(near)} NOAA tide station{'s' if len(near) != 1 else ''} closest to {esc(tname)}"}{f" (also called {esc(' or '.join(aka))})" if aka else ""}.
 Tap a station for its full chart, the week ahead, currents, an hourly fishing forecast and the marine forecast.</p>
 <div class="spots">{"".join(cards)}</div>
 <p>{" ".join(facts)}</p>
 {cta}
-{places_section(tname, first.get("_places"), f"Beaches, ramps and marinas near {esc(tname)}")}
+{"" if region else places_section(tname, first.get("_places"), f"Beaches, ramps and marinas near {esc(tname)}")}
 {f'<h2>Nearby towns</h2><ul class="near">{links}</ul>' if links else ""}
 <p><a href="{BASE}tides/{slugify(state)}/">All {esc(state)} tide stations</a></p>
 """
     path = town_path(tname, tst)
-    crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (f"Tides near {tname}", path)]
-    return path, page(f"{tname}, {tst} Tide Chart & Tide Times Today",
-                      f"High and low tide times today for {tname}, {state}, from the closest NOAA tide stations, with charts, "
+    crumbs = [("Home", ""), (state, f"tides/{slugify(state)}/"), (f"Tides {'around' if region else 'near'} {tname}", path)]
+    return path, page(f"{tname}{also}, {tst} Tide Chart & Tide Times Today",
+                      f"High and low tide times today for {tname}{also}, {state}, from the closest NOAA tide stations, with charts, "
                       f"currents, an hourly fishing forecast and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
 
 
@@ -1874,7 +1878,8 @@ self.addEventListener("fetch", (e) => {
 
 def search_index(stations, town_pages=()):
     """[label, state, path, lat, lng, extra words to match]. Towns come first so "Pacifica" finds its town page."""
-    return {"base": BASE, "s": [[f"Tides near {n}", st, p, round(la, 3), round(lo, 3), "town"] for n, st, p, la, lo in town_pages] +
+    return {"base": BASE, "s": [[f"Tides near {n}", st, p, round(la, 3), round(lo, 3), "town"] + ([aka] if aka else [])
+                                for n, st, p, la, lo, aka in town_pages] +
             [[s["pretty"], s["state"], s["path"], round(s["lat"], 3), round(s["lng"], 3), s["town"][0] if s.get("town") else ""]
              for s in stations]}
 
@@ -1924,6 +1929,11 @@ def main():
     counties = load(ROOT / "collector" / "county_zones.json", {})
     nearby = load(ROOT / "collector" / "places.json", {})
     towns = load(ROOT / "collector" / "towns.json", {"stations": {}, "towns": {}})
+    # Beach towns, islands and spots people search for that GeoNames/towns.py miss, plus other names for places.
+    extra = load(ROOT / "collector" / "extra_places.json", {"places": [], "aka": {}})
+    for name, st, la, lo, *opt in extra["places"]:
+        towns["towns"].setdefault(f"{st}|{name}", [name, st, la, lo, 0] + opt)
+    town_aka = extra["aka"]
     for st_ in stations:
         t = towns["stations"].get(st_["id"])
         if t and t[0] in towns["towns"]:
@@ -1989,15 +1999,19 @@ def main():
         near = sorted(((miles(pt, o), o) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
                        for o in cells.get((int(tn[2]) + dy, int(tn[3]) + dx), []) if o["id"] in built_data),
                       key=lambda x: x[0])
-        near = [(d, built_data[o["id"]]) for d, o in near if d <= 15][:8]
+        opt = tn[5] if len(tn) > 5 else {}
+        if opt.get("r", 15) > 15:  # islands and coasts reach past the neighbouring cells
+            near = sorted(((miles(pt, o), o) for o in stations if o["id"] in built_data), key=lambda x: x[0])
+        near = [(d, built_data[o["id"]]) for d, o in near if d <= opt.get("r", 15)][:12 if opt.get("region") else 8]
         if not near:
             continue
         others = sorted((miles(pt, {"lat": o[2], "lng": o[3]}), o[0], town_path(o[0], o[1])) for kk, o in tlist
                         if kk != k and abs(o[2] - tn[2]) < 0.5 and abs(o[3] - tn[3]) < 0.6)
-        others = [x for x in others if x[0] <= 25][:8]
-        path, html_ = town_page(tn, near, others)
+        others = [x for x in others if 0.3 < x[0] <= 25][:8]
+        aka = town_aka.get(k, [])
+        path, html_ = town_page(tn, near, others, aka, opt.get("region", False))
         write(path + "index.html", html_)
-        town_pages.append((tn[0], tn[1], path, tn[2], tn[3]))
+        town_pages.append((tn[0], tn[1], path, tn[2], tn[3], " ".join(aka)))
         by_state_towns.setdefault(tn[1], []).append((tn[0], path))
 
     for code, g in groups.items():

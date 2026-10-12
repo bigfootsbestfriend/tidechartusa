@@ -138,3 +138,9 @@ Sun and moon are calculated locally (`site/astro.py`).
 - Station pages show a "Next king tides here" line above the month table. State tide pages link to their king tide page, and the footer links the hub.
 - Official photo projects are listed in `KT_PROGRAMS` in build.py: CA, OR, WA Sea Grant, Hawaii Sea Grant, plus MyCoast for MA/MD/NJ/RI/SC/WA/FL/TX. Re-check these links each fall.
 - No outreach (Mike, 2026-10-11). The pages are meant to earn links on their own, mainly from news "king tides this week" stories and local sites.
+
+## Extra town pages and aliases (2026-10-11)
+
+- `collector/extra_places.json` adds ~90 "Tides near" pages towns.py misses: small beach towns (Holden Beach, Emerald Isle, Ogunquit), spots (Sandy Hook, Sebastian Inlet, Blue Heron Bridge) and SoCal cities with no station within 15 mi (Carlsbad, Malibu: `"r": 30`). `"region": true` entries (Oahu, Maui, Cape Cod, Outer Banks, Puget Sound, LBI...) say "Tides around", list up to 12 stations with each one's town, and skip the places box.
+- `aka` maps a town key to other names people search (OCMD, OCNJ, HHI, St. Augustine, Jax Beach, OBX, LBI...). Shown in the title/H1/lede and matched by site search (7th field in search.json).
+- Picked from Semrush US "<place> tide chart/tides" keywords (Oct 2026) with no matching page. Add more the same way.

@@ -14,7 +14,7 @@
       const data = await load();
       const words = q.split(" ");
       const bare = (n) => norm(n.replace(/^Tides near /, ""));
-      const hits = data.s.filter(([name, st, , , , alias]) => { const n = norm(`${name} ${st} ${alias || ""}`); return words.every((w) => n.includes(w)); })
+      const hits = data.s.filter(([name, st, , , , alias, aka]) => { const n = norm(`${name} ${st} ${alias || ""} ${aka || ""}`); return words.every((w) => n.includes(w)); })
         .sort((a, b) => bare(b[0]).startsWith(q) - bare(a[0]).startsWith(q) || (b[5] === "town") - (a[5] === "town")).slice(0, 10);
       box.innerHTML = hits.length
         ? hits.map(([name, st, path]) => `<a href="${data.base}${path}${input.dataset.suffix || ""}">${name.replace(/</g, "&lt;")} <span>${st}</span></a>`).join("")
