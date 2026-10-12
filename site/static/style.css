@@ -602,3 +602,8 @@ ol.steps li:nth-child(2)::before { background: #e08a1e; } ol.steps li:nth-child(
 .kt-sort { display: flex; align-items: center; gap: 8px; }
 .kt-sort select { font: inherit; font-size: .92rem; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .kt-count { margin: 10px 0 0; font-size: .85rem; color: var(--muted); }
+/* Station list: fishing badges and a single column when ranked */
+.stations .sb { display: inline-block; min-width: 2em; text-align: center; margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: .74rem; line-height: 1.6; color: #fff; background: var(--b1); vertical-align: 1px; }
+.stations .sb.b2 { background: var(--b2); color: #2b1d00; } .stations .sb.b3 { background: var(--b3); } .stations .sb.b4 { background: var(--b4); }
+ul.stations.ranked { columns: 1; list-style: decimal; padding-left: 28px; }
+ul.stations.ranked li::marker { color: var(--muted); font-size: .85em; }

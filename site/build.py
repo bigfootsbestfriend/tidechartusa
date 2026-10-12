@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "36"
+CSS_VER = "37"
 
 
 def ga_tag():
@@ -1190,6 +1190,18 @@ def tipcards(tips, tone):
         for i, t, d in tips) + "</div>"
 
 
+def list_tools(total, refs):
+    """Search, chips and sort for a state's station list (wired up in site.js). The HTML stays A to Z and fully shown."""
+    chips = (f'<div class="kt-chips" role="group" aria-label="Station type"><span>{ico("pin")} Show</span>'
+             f'<button type="button" data-k="" class="on">All {total}</button><button type="button" data-k="ref">Reference stations {refs}</button></div>') if 0 < refs < total else "<span></span>"
+    return f"""<div class="kt-tools" data-list-tools data-target="ul.stations">
+<label class="filter"><span>{ico("search")} Find a spot</span><input type="search" placeholder="Type a town, bay or inlet" data-lq></label>
+<div class="kt-row">{chips}
+<label class="kt-sort"><span>Sort</span><select data-lsort><option value="n">A to Z</option><option value="near">Nearest to me</option>
+<option value="b">Best fishing today</option></select></label></div>
+<p class="kt-count" data-lcount aria-live="polite">Showing all {total} spots</p></div>"""
+
+
 def kt_tools(months, total):
     """Search, month chips and sort for the long king-tide-times table (wired up in site.js)."""
     chips = "".join(f'<button type="button" data-m="{m}">{dt.date.fromisoformat(m + "-01"):%b}</button>' for m in sorted(months)[:8])
@@ -1250,11 +1262,11 @@ def kt_state_page(code, rows, today, built_at):
         later = ", ".join(kingtides.span(x[0], x[1]) for x in nxt[1:])
         ms = [f"{a:%Y-%m}"]  # month of the next king tide window
         months.update(ms)
-        spot_rows.append(
+        spot_rows.append((a, st["pretty"].lower(),
             f'<tr data-n="{esc(st["pretty"].lower())}" data-d="{a.isoformat()}" data-h="{v:.2f}" '
             f'data-a="{v - kt["typical"]:.2f}" data-m="{" ".join(ms)}"><th scope="row"><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a></th>'
             f'<td><b>{kingtides.span(a, b)}</b>{f"<br><small>then {later}</small>" if later else ""}</td>'
-            f'<td>{ft(v)} <small>{pk:%a %b} {pk.day}, {clock(pk)}<br>{ft(v - kt["typical"])} above a typical high</small></td></tr>')
+            f'<td>{ft(v)} <small>{pk:%a %b} {pk.day}, {clock(pk)}<br>{ft(v - kt["typical"])} above a typical high</small></td></tr>'))
     biggest = sorted(rows, key=lambda r: -(r[1]["top"][1] - r[1]["typical"]))[:5]
     big_list = "".join(
         f'<li><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a>: {ft(kt["top"][1])} on {kt["top"][0]:%b} {kt["top"][0].day} '
@@ -1279,7 +1291,7 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 <h2 id="spots">King tide times for your spot</h2>
 {kt_tools(months, len(spot_rows))}
 <div class="scroll"><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
-<tbody>{"".join(spot_rows)}</tbody></table></div>
+<tbody>{"".join(r for _, _, r in sorted(spot_rows))}</tbody></table></div>
 <h2>{ico("camera")} Photograph the king tides</h2>
 {tipcards(KT_PHOTO_TIPS, "photo")}
 {prog_html}
@@ -1501,16 +1513,22 @@ Tap a station for its full chart, the week ahead, currents, an hourly fishing fo
 def state_page(code, stations, towns=(), kings=False):
     state = STATES.get(code, code)
     refs = sum(1 for s in stations if s["type"] == "R")
-    items = "".join(f'<li data-n="{esc(s["pretty"].lower())}"><a href="{BASE}{s["path"]}">{esc(s["pretty"])}</a>'
-                    f'{" <span class=tag>reference</span>" if s["type"] == "R" else ""}</li>'
-                    for s in sorted(stations, key=lambda s: s["pretty"].lower()))
+    lis = []
+    for s in sorted(stations, key=lambda s: s["pretty"].lower()):
+        tz = zone_for(s)
+        b = (s.get("_bite") or {}).get(dt.datetime.now(tz).date())
+        badge = f' <b class="sb b{bite_band(b[0])}" title="Fishing today: {bite_label(b[0])}">{b[0]}</b>' if b else ""
+        lis.append(f'<li data-n="{esc(s["pretty"].lower())}" data-k="{"ref" if s["type"] == "R" else ""}" '
+                   f'data-b="{b[0] if b else -1}" data-ll="{s["lat"]:.4f},{s["lng"]:.4f}"><a href="{BASE}{s["path"]}">{esc(s["pretty"])}</a>'
+                   f'{" <span class=tag>reference</span>" if s["type"] == "R" else ""}{badge}</li>')
+    items = "".join(lis)
     town_list = ("<h2>Tides by town</h2><ul class='towns'>" + "".join(
         f'<li><a href="{BASE}{p}">{esc(n)}</a></li>' for n, p in sorted(towns)) + "</ul>") if towns else ""
     body = f"""
 <h1>{esc(state)} tide charts</h1>
 <p class="lede">Tide times and charts for {len(stations)} NOAA tide stations in {esc(state)}. {refs} are reference
 stations with their own long-term measurements; the rest are calculated from the nearest reference station.</p>
-<label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
+{list_tools(len(stations), refs)}
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 {f'<p class="tip">{ico("cal")} <a href="{BASE}{kt_path(code)}">King tide dates for {esc(state)}</a>: when the year\'s highest tides arrive at every spot.</p>' if kings else ""}
 <ul class="stations">{items}</ul>
@@ -1608,6 +1626,7 @@ ICON = {
     "sunrise": '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v5M9 7l3-3 3 3M3.5 13l1.6.9M20.5 13l-1.6.9"/>',
     "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     "gauge": '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/><circle cx="12" cy="18" r="1"/>',
+    "search": '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
 }
 
 

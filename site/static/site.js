@@ -34,6 +34,38 @@
     });
   });
 
+  // State station lists: search, type chips and sort (A to Z, nearest, best fishing). Nothing changes until used.
+  document.querySelectorAll("[data-list-tools]").forEach((tools) => {
+    const list = document.querySelector(tools.dataset.target);
+    if (!list) return;
+    const items = [...list.children], q = tools.querySelector("[data-lq]"), sort = tools.querySelector("[data-lsort]");
+    const count = tools.querySelector("[data-lcount]"), chips = [...tools.querySelectorAll("[data-k]")];
+    let kind = "", here = null;
+    const rad = Math.PI / 180;
+    const dist = (li) => { if (!here) return 0; const [a, b] = li.dataset.ll.split(",").map(Number);
+      return 3958.8 * 2 * Math.asin(Math.sqrt(Math.sin((a - here[0]) * rad / 2) ** 2 + Math.cos(a * rad) * Math.cos(here[0] * rad) * Math.sin((b - here[1]) * rad / 2) ** 2)); };
+    const keys = { n: (li) => li.dataset.n, b: (li) => -Number(li.dataset.b), near: dist };
+    const apply = () => {
+      const t = norm(q.value), k = keys[sort.value];
+      let shown = 0;
+      items.forEach((li) => { const ok = (!t || norm(li.dataset.n).includes(t)) && (!kind || li.dataset.k === kind); li.hidden = !ok; if (ok) shown++; });
+      items.slice().sort((x, y) => { const a = k(x), b = k(y); return a < b ? -1 : a > b ? 1 : 0; }).forEach((li) => list.appendChild(li));
+      list.classList.toggle("ranked", sort.value !== "n");
+      count.textContent = shown === items.length ? `Showing all ${items.length} spots` : shown ? `Showing ${shown} of ${items.length} spots` : "No spots match. Try another name.";
+      if (sort.value === "near" && here) count.textContent += " · nearest first";
+    };
+    q.addEventListener("input", apply);
+    chips.forEach((c) => c.addEventListener("click", () => { kind = c.dataset.k; chips.forEach((x) => x.classList.toggle("on", x === c)); apply(); }));
+    sort.addEventListener("change", () => {
+      if (sort.value !== "near" || here) return apply();
+      if (!navigator.geolocation) { sort.value = "n"; count.textContent = "Your browser can't share a location."; return; }
+      count.textContent = "Finding your location…";
+      navigator.geolocation.getCurrentPosition(({ coords }) => { here = [coords.latitude, coords.longitude]; apply(); },
+        () => { sort.value = "n"; apply(); count.textContent = "Location is blocked or unavailable, so the list stays A to Z."; },
+        { timeout: 10000, maximumAge: 600000 });
+    });
+  });
+
   // King tide times: search, month chips and sort on one long table.
   document.querySelectorAll("[data-kt-tools]").forEach((tools) => {
     const tbody = document.querySelector("table.kt-spots tbody");
@@ -41,7 +73,7 @@
     const rows = [...tbody.rows], q = tools.querySelector("[data-kt-q]"), sort = tools.querySelector("[data-kt-sort]");
     const count = tools.querySelector("[data-kt-count]"), chips = [...tools.querySelectorAll("[data-m]")];
     let month = "";
-    const key = { d: (r) => r.dataset.d, n: (r) => r.dataset.n, h: (r) => -parseFloat(r.dataset.h), a: (r) => -parseFloat(r.dataset.a) };
+    const key = { d: (r) => r.dataset.d + r.dataset.n, n: (r) => r.dataset.n, h: (r) => -parseFloat(r.dataset.h), a: (r) => -parseFloat(r.dataset.a) };
     const apply = () => {
       const t = norm(q.value), k = key[sort.value];
       let shown = 0;
@@ -55,7 +87,7 @@
     q.addEventListener("input", apply);
     sort.addEventListener("change", apply);
     chips.forEach((c) => c.addEventListener("click", () => { month = c.dataset.m; chips.forEach((x) => x.classList.toggle("on", x === c)); apply(); }));
-    apply();
+    // The page is built soonest-first, so nothing moves or hides until the visitor uses a control (search engines see every row).
   });
 
   // "Find tides near me": nearest stations to the browser's location, from the same index.
