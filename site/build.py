@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "34"
+CSS_VER = "35"
 
 
 def ga_tag():
@@ -1141,19 +1141,53 @@ for _c in ("MA", "MD", "NJ", "RI", "SC", "WA", "FL", "TX"):
     KT_PROGRAMS.setdefault(_c, []).append(("MyCoast", "https://mycoast.org/",
                                            "a free app for reporting king tides and coastal flooding, used by state agencies and researchers"))
 
-KT_SAFETY = """<ul>
-<li>Stay off jetties, sea walls and rock shelves near the peak. Waves run higher than usual on a king tide.</li>
-<li>On the Pacific coast, keep off drift logs and watch for sneaker waves; a log can roll on you in a few inches of surf.</li>
-<li>Don't drive or walk through flooded streets. Salt water ruins cars, and the curb and drains are hidden.</li>
-<li>Check the marine forecast. Onshore wind, low air pressure or heavy rain can add a foot or more to the predicted tide.</li>
-</ul>"""
+KT_SAFETY_TIPS = [
+    ("waves", "Stay off the edges", "Jetties, sea walls and rock shelves get hit by bigger waves than usual near the peak."),
+    ("log", "Watch the drift logs", "On the Pacific coast, sneaker waves can roll a log onto you in a few inches of surf."),
+    ("car", "Don't drive through water", "Salt water ruins cars, and flooded curbs and storm drains are hidden."),
+    ("wind", "Check the forecast", "Onshore wind, low pressure or heavy rain can add a foot or more to the predicted tide."),
+]
+KT_PHOTO_TIPS = [
+    ("clock", "Arrive early", "Get there half an hour before your spot's peak and stay until it passes."),
+    ("ruler", "Show the scale", "Frame something people know: a stair, sign, piling, sea wall or road."),
+    ("compare", "Shoot a before", "Take the same shot at an ordinary high tide. The pair says more than words."),
+    ("upload", "Share it", "Note the place, date and time and send it to your state's project. Planners use them to map rising seas."),
+]
 
-KT_PHOTO = """<ul>
-<li>Arrive half an hour before the peak time for your spot and stay until it passes.</li>
-<li>Include something people know for scale: a stair, a sign, a piling, a sea wall or a road.</li>
-<li>Take a matching photo from the same spot at an ordinary high tide. The pair shows the difference better than words.</li>
-<li>Note the place, date and time, and share it with your state's project below. Planners use these photos to see where the water will reach as sea level rises.</li>
-</ul>"""
+
+BITE_TIPS = [
+    ("current", "Moving water", "A tide running harder than usual for the spot stirs up bait and scores higher."),
+    ("moon", "Solunar periods", "About two hours around the moon overhead or underfoot, and an hour around moonrise and moonset."),
+    ("sunrise", "Low light", "The hour around sunrise and sunset, when fish feed closer in."),
+    ("phase", "Moon phase", "Days near the new and full moon bring bigger tides and stronger currents."),
+    ("wind", "Wind", "On each spot's page, strong wind from the National Weather Service forecast lowers the score."),
+    ("gauge", "Pressure", "Slowly falling pressure before a front raises the score; a sharp rise lowers it."),
+]
+KT_WHY = [
+    ("phase", "Sun and moon line up", "Around every new and full moon their pull adds together: spring tides."),
+    ("moon", "The moon is closest", "Once a month the moon reaches perigee. Near a new or full moon, tides run highest."),
+    ("sun", "Earth is near the sun", "In early January Earth is closest to the sun, which adds a little more."),
+]
+KT_SEASONS = [
+    ("waves", "Pacific coast", "The biggest tides come in winter, November to January."),
+    ("sun", "Florida and the Southeast", "Early fall, when the ocean is warmest and sea level is at its seasonal high."),
+    ("beach", "Hawaiʻi", "Two seasons: early summer and midwinter."),
+]
+GUIDE_TIPS = [
+    ("chart", "The curve", "The wavy line is the predicted water height. Peaks are high tides, dips are low tides, and the steepest part is when water moves fastest."),
+    ("ruler", "The numbers", "Heights are feet above mean lower low water (MLLW), the zero on nautical charts. A minus tide drops below it and uncovers extra beach."),
+    ("compare", "Why the two highs differ", "Pacific, Alaska and Hawaiʻi tides are mixed: one high is much higher. Most of the Atlantic has two similar highs; parts of the Gulf get one."),
+    ("phase", "Spring and neap tides", "Near the new and full moon, highs are higher and lows lower (spring tides). Near quarter moons the range shrinks (neap tides)."),
+    ("wind", "Predictions vs. reality", "Onshore wind, low pressure or river flow can raise the water; offshore wind can drop it. Not for navigation."),
+    ("pin", "Reference and nearby stations", "Reference stations are measured for years. Thousands of others are worked out from the nearest one and can be off by a few minutes."),
+]
+
+
+def tipcards(tips, tone):
+    """A grid of colourful icon cards: short title plus one line, instead of a wall of bullets."""
+    return f'<div class="tips t-{tone}">' + "".join(
+        f'<div class="tcard"><span class="tc-i">{ico(i)}</span><div><b>{t}</b><p>{d}</p></div></div>'
+        for i, t, d in tips) + "</div>"
 
 
 def kt_path(code):
@@ -1230,11 +1264,11 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 <label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
 <div class="scroll"><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
 <tbody>{"".join(spot_rows)}</tbody></table></div>
-<h2>Photograph the king tides</h2>
-{KT_PHOTO}
+<h2>{ico("camera")} Photograph the king tides</h2>
+{tipcards(KT_PHOTO_TIPS, "photo")}
 {prog_html}
-<h2>Stay safe</h2>
-{KT_SAFETY}
+<h2>{ico("warn")} Stay safe</h2>
+{tipcards(KT_SAFETY_TIPS, "safe")}
 <h2>How these dates are worked out</h2>
 <p>For every spot we take NOAA's high and low tide predictions for the next 12 months and find each day's highest tide.
 The days in that spot's top 5% (about 18 days a year) are its king tide days, and days next to each other make one
@@ -1281,21 +1315,18 @@ dates, peak times and heights at every NOAA tide station.</p>
 <div class="search"><input type="search" placeholder="Find your beach, pier or harbor" aria-label="Search spots" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
 <h2>When are the king tides?</h2>
 {"".join(blocks)}
-<h2>What makes a king tide</h2>
-<p>Every two weeks, around the new and full moon, the sun and moon line up and tides run bigger than usual (spring tides).
-Once a month the moon is also at its closest to Earth (perigee), and when that lands near a new or full moon the pull
-is strongest. In early January Earth is closest to the sun, which adds a little more. "King tide" isn't a scientific
-term: it's the name for the highest of these, a handful of days a year.</p>
-<p>The season isn't the same everywhere. On the Pacific coast the biggest tides come in winter, from November to
-January. In Florida and the Southeast they come in early fall, when ocean water is warmest and sea level is at its seasonal
-high. Hawaiʻi gets them in summer and winter. Because we work from each spot's own predictions, the dates on our state
-pages already match your stretch of coast.</p>
-<h2>Photograph the king tides</h2>
-{KT_PHOTO}
+<h2>{ico("moon")} What makes a king tide</h2>
+<p>"King tide" isn't a scientific term: it's the name for the few highest tides of the year, when three things stack up.</p>
+{tipcards(KT_WHY, "why")}
+<h2>{ico("cal")} When they come to your coast</h2>
+{tipcards(KT_SEASONS, "coast")}
+<p class="note">We work from each spot's own predictions, so the dates on every state page already match your stretch of coast.</p>
+<h2>{ico("camera")} Photograph the king tides</h2>
+{tipcards(KT_PHOTO_TIPS, "photo")}
 <p>State and university projects collect these photos:</p>
 <ul>{"".join(progs)}</ul>
-<h2>Stay safe</h2>
-{KT_SAFETY}
+<h2>{ico("warn")} Stay safe</h2>
+{tipcards(KT_SAFETY_TIPS, "safe")}
 <p class="note">Dates come from NOAA tide predictions for the next 12 months: a spot's king tide days are its top 5% of
 daily high tides. Predictions don't include wind, storms or rain. Not for navigation.</p>
 </article>"""
@@ -1500,12 +1531,9 @@ def fishing_page(groups):
 <p class="lede">Every tide station on Shorebite has an hour-by-hour fishing forecast. Here are today's top-rated spots in each
 state. Open any of them for the best times, live wind and pressure, rain radar and the fish recorded in those waters.</p>
 <div class="search"><input type="search" placeholder="Find your beach, pier or harbor" aria-label="Search fishing spots" data-search data-suffix="#bite" autocomplete="off"><div class="results" data-results hidden></div></div>
-<h2>How the bite score works</h2>
-<p>The score (0 to 100) adds up what anglers watch most. <b>Moving water</b>: a tide running harder than usual for that spot scores
-higher, because moving water stirs up bait. <b>Solunar periods</b>: about two hours around the moon passing overhead or underfoot,
-and an hour around moonrise and moonset. <b>Low light</b>: the hour around sunrise and sunset. <b>Moon phase</b>: days near the new
-and full moon bring bigger tides. On the spot's page we also fold in the National Weather Service wind forecast and the pressure
-trend: strong wind lowers the score, and slowly falling pressure before a front raises it.</p>
+<h2>{ico("fish")} How the bite score works</h2>
+<p>A 0 to 100 score for every hour, built from what anglers watch most:</p>
+{tipcards(BITE_TIPS, "fish")}
 <p class="note">A planning aid, not a guarantee. Always check your state's fishing rules, seasons and limits.</p>
 {"".join(rows)}"""
     return page("Fishing Forecast Today: Best Times to Fish at Every US Beach and Harbor",
@@ -1550,6 +1578,20 @@ ICON = {
     "chat": '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     "share": '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    "camera": '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    "ruler": '<rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6 8v3M9.5 8v4M13 8v3M16.5 8v4"/>',
+    "compare": '<rect x="3" y="5" width="8" height="14" rx="1.5"/><rect x="13" y="5" width="8" height="14" rx="1.5"/><path d="M3 15l2.5-2 2.5 2 3-2M13 12l2.5-2 2.5 2 3-2"/>',
+    "upload": '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>',
+    "waves": '<path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 21c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/>',
+    "log": '<ellipse cx="5" cy="12" rx="2.5" ry="4"/><path d="M5 8h14a2.5 4 0 0 1 0 8H5"/><path d="M2 21c2.5 0 2.5-1.5 5-1.5s2.5 1.5 5 1.5 2.5-1.5 5-1.5 2.5 1.5 5 1.5"/>',
+    "car": '<path d="M5 13l1.5-5h11L19 13"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="16.5" cy="18" r="1.5"/>',
+    "wind": '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h7"/>',
+    "moon": '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    "phase": '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    "sunrise": '<path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 4v5M9 7l3-3 3 3M3.5 13l1.6.9M20.5 13l-1.6.9"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    "gauge": '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/><circle cx="12" cy="18" r="1"/>',
 }
 
 
@@ -1720,36 +1762,7 @@ GUIDE = """
 <h1>How to read a tide chart</h1>
 <p class="lede">A tide chart shows how high the water will be at a spot through the day. Here is what each part means and how to use it.</p>
 
-<h2>The curve</h2>
-<p>The wavy line is the predicted water height. Peaks are <strong>high tides</strong> and dips are <strong>low tides</strong>.
-The time between a high and the next low is usually a little over six hours, so on most of the US coast you get two of each a day.
-The steepest part of the curve, halfway between a high and a low, is when the water rises or falls fastest.</p>
-
-<h2>The numbers</h2>
-<p>Heights are measured in feet from a zero line called <strong>mean lower low water (MLLW)</strong>: the average of the lowest
-tide of each day over many years. It's the same zero used on most US nautical charts, so a charted depth plus the tide height
-is roughly the water you'll have. A <strong>minus tide</strong> (for example -1.2 ft) means the water drops below that average
-low, uncovering more beach, rocks and flats than usual.</p>
-
-<h2>Why the two highs differ</h2>
-<p>On the Pacific coast, in Alaska and in Hawaii, one high tide each day is usually much higher than the other. That's a
-<strong>mixed tide</strong>. Most of the Atlantic coast has two highs of similar height (<strong>semidiurnal</strong>), and parts
-of the Gulf of Mexico get just one high and one low a day (<strong>diurnal</strong>). Each station page here says which kind it has.</p>
-
-<h2>Spring and neap tides</h2>
-<p>Around the new and full moon the sun and moon pull in line, so highs are higher and lows are lower. Those are
-<strong>spring tides</strong> (nothing to do with the season). Around the quarter moons the range shrinks: <strong>neap tides</strong>.
-Station pages list the days with the biggest swings in the month ahead.</p>
-
-<h2>Predictions vs. what you'll see</h2>
-<p>These are NOAA's astronomical predictions. Strong onshore wind, low air pressure or heavy river flow can raise the water
-above the prediction, and offshore wind can drop it. For boating, check current conditions and official notices too.
-<strong>This site is not for navigation.</strong></p>
-
-<h2>Subordinate and reference stations</h2>
-<p>NOAA measures water levels for years at <strong>reference stations</strong> and predicts their tides directly. Thousands of
-other spots are <strong>subordinate stations</strong>: their times and heights are worked out by adjusting the nearest reference
-station. They're good for planning but can be off by a few minutes or a few tenths of a foot.</p>
+__GUIDE_CARDS__
 __GUIDE_CTA__
 </article>
 """
@@ -1802,7 +1815,7 @@ builder that accepts an embed or HTML block (WordPress, Squarespace, Wix, Shopif
 <p>It's free for marinas, bait and tackle shops, fishing and boating clubs, vacation rentals, surf shops, harbor masters,
 schools and local news. There's no sign-up and no ads in the widget.</p>
 <h2>Get the code</h2>
-<ol><li>Find your spot below.</li><li>On its page, scroll to <b>Put these tides on your website</b> at the bottom and tap <b>Copy the code</b>.</li>
+<ol class="steps"><li>Find your spot below.</li><li>On its page, scroll to <b>Put these tides on your website</b> at the bottom and tap <b>Copy the code</b>.</li>
 <li>Paste it into an HTML or embed block on your site.</li></ol>
 <div class="search big"><input type="search" placeholder="Find your beach, harbor or town" aria-label="Find your spot" data-search data-suffix="#embed" autocomplete="off"><div class="results" data-results hidden></div></div>
 <h2>Good to know</h2>
@@ -1820,7 +1833,7 @@ SAVED_PAGE = """
 on the boat, on the beach or in airplane mode. They update themselves whenever you open them with a connection.</p>
 <div class="saved-list" id="saved-list"></div>
 <h2>How to add a favorite</h2>
-<ol><li>Open any beach or harbor page.</li><li>Tap <b>Favorite</b> near the top.</li><li>Come back here any time from <b>Favorites</b> at the top of every page.</li></ol>
+<ol class="steps"><li>Open any beach or harbor page.</li><li>Tap <b>Favorite</b> near the top.</li><li>Come back here any time from <b>Favorites</b> at the top of every page.</li></ol>
 <p class="note">Favorites live in this browser. If you clear your browsing data they'll be removed. Live weather and warnings need a connection.</p>
 </article>
 """
@@ -2052,7 +2065,7 @@ def main():
     write("how-to-read-a-tide-chart/index.html", page(
         "How to Read a Tide Chart: Highs, Lows, MLLW and Minus Tides",
         "What the curve and numbers on a tide chart mean, why the two daily highs differ, and spring vs. neap tides.",
-        "how-to-read-a-tide-chart/", GUIDE.replace("__GUIDE_CTA__", (
+        "how-to-read-a-tide-chart/", GUIDE.replace("__GUIDE_CARDS__", tipcards(GUIDE_TIPS, "learn")).replace("__GUIDE_CTA__", (
             f'<p class="cta-box">{ico("mail")} <span>Want this for your own beach? <a href="{BASE}#signup-band">Get its tides free by email '
             f'every Thursday</a>, with a heads-up before the best low tides.</span></p>') if ALERTS_API else ""), crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
     write("about/index.html", page("About Shorebite", "Where our tide predictions come from.", "about/", ABOUT))

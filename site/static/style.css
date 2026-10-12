@@ -158,7 +158,7 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .spark { display: block; width: 100%; height: 56px; margin: 10px 0 8px; }
 .spark .fill { fill: var(--foam); }
 .spark .line { fill: none; stroke: var(--sea-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.spot ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.2em), 1fr)); gap: 2px 10px; font-size: .88rem; }
+.spot ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.2em), 1fr)); gap: 7px 8px; font-size: .88rem; }
 .spot li b { font-weight: 600; }
 .spot li.H b { color: var(--high); } .spot li.L b { color: var(--low); }
 .spot li i { color: var(--muted); font-style: normal; }
@@ -177,7 +177,8 @@ h2.sec span { color: var(--muted); font-weight: 400; font-size: 1rem; }
 .guide-cta:hover { color: var(--sea); }
 @media (max-width: 520px) { .hero-in { padding: 26px 16px 76px; } }
 .hero-sea { border: 0; padding: 0; }
-.spot li { white-space: nowrap; }
+.spot li { white-space: nowrap; padding: 5px 9px; border-radius: 9px; background: var(--bg); border-left: 3px solid var(--high); line-height: 1.3; }
+.spot li.L { border-left-color: var(--low); }
 .waves { bottom: -2px; } .spot li b { font-size: .8em; }
 /* Weather and marine radio */
 .wx { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -553,3 +554,39 @@ h2.sec > svg.ico { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-
   background: var(--card); color: var(--muted); text-decoration: none; font-size: .92rem; }
 .kt-chip b { color: var(--ink); }
 .kt-chip:hover { border-color: var(--sea-2); }
+/* Tip cards: colourful icon cards instead of bullet lists */
+h2:not(.sec) > svg.ico:first-child { width: 1.2em; height: 1.2em; padding: 5px; margin-right: 8px; border-radius: 10px; box-sizing: content-box; vertical-align: -0.38em; background: var(--foam); color: var(--sea); }
+.tips { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 8px 0 14px; }
+@media (min-width: 560px) { .tips { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1100px) { .tips { grid-template-columns: repeat(4, 1fr); } }
+.tcard { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 14px; background: var(--tip-bg); border: 1px solid var(--tip-line); border-top: 4px solid var(--tip-c); }
+.tc-i { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--tip-c); color: #fff; }
+.tc-i svg.ico { width: 24px; height: 24px; vertical-align: 0; }
+.tcard b { display: block; font-size: 1.02rem; margin-bottom: 2px; }
+.tcard p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.45; }
+.t-photo { --tip-c: #e08a1e; --tip-bg: #fff6e8; --tip-line: #f4dcb5; }
+.t-photo .tcard:nth-child(2) { --tip-c: #d6336c; --tip-bg: #fdecf2; --tip-line: #f5c9d8; }
+.t-photo .tcard:nth-child(3) { --tip-c: #1689ad; --tip-bg: #e6f5fa; --tip-line: #bfe3ef; }
+.t-photo .tcard:nth-child(4) { --tip-c: #2f9e5b; --tip-bg: #e9f7ee; --tip-line: #c3e8d0; }
+.t-safe { --tip-c: #d9480f; --tip-bg: #fff0e8; --tip-line: #f7d0bd; }
+.t-safe .tcard:nth-child(2) { --tip-c: #9c5b2e; --tip-bg: #f8efe7; --tip-line: #e8d3c1; }
+.t-safe .tcard:nth-child(3) { --tip-c: #c92a2a; --tip-bg: #fdeaea; --tip-line: #f3c4c4; }
+.t-safe .tcard:nth-child(4) { --tip-c: #5f3dc4; --tip-bg: #f0ecfc; --tip-line: #d6ccf5; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tips .tcard { --tip-bg: color-mix(in srgb, var(--tip-c) 14%, var(--card)); --tip-line: color-mix(in srgb, var(--tip-c) 35%, var(--card)); }
+}
+:root[data-theme="dark"] .tips .tcard { --tip-bg: color-mix(in srgb, var(--tip-c) 14%, var(--card)); --tip-line: color-mix(in srgb, var(--tip-c) 35%, var(--card)); }
+.t-fish, .t-why, .t-coast, .t-learn { --tip-c: #1689ad; --tip-bg: #e6f5fa; --tip-line: #bfe3ef; }
+.t-fish .tcard:nth-child(6n+2), .t-why .tcard:nth-child(2), .t-coast .tcard:nth-child(2), .t-learn .tcard:nth-child(6n+2) { --tip-c: #e08a1e; --tip-bg: #fff6e8; --tip-line: #f4dcb5; }
+.t-fish .tcard:nth-child(6n+3), .t-why .tcard:nth-child(3), .t-coast .tcard:nth-child(3), .t-learn .tcard:nth-child(6n+3) { --tip-c: #d6336c; --tip-bg: #fdecf2; --tip-line: #f5c9d8; }
+.t-fish .tcard:nth-child(6n+4), .t-learn .tcard:nth-child(6n+4) { --tip-c: #5f3dc4; --tip-bg: #f0ecfc; --tip-line: #d6ccf5; }
+.t-fish .tcard:nth-child(6n+5), .t-learn .tcard:nth-child(6n+5) { --tip-c: #2f9e5b; --tip-bg: #e9f7ee; --tip-line: #c3e8d0; }
+.t-fish .tcard:nth-child(6n+6), .t-learn .tcard:nth-child(6n+6) { --tip-c: #c92a2a; --tip-bg: #fdeaea; --tip-line: #f3c4c4; }
+.t-why, .t-coast { grid-template-columns: 1fr; }
+@media (min-width: 560px) { .t-why, .t-coast { grid-template-columns: repeat(3, 1fr); } .t-fish, .t-learn { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px) { .t-fish, .t-learn { grid-template-columns: repeat(3, 1fr); } }
+/* Numbered step cards */
+ol.steps { list-style: none; counter-reset: st; padding: 0; margin: 10px 0 16px; display: grid; gap: 10px; }
+ol.steps li { counter-increment: st; position: relative; padding: 14px 14px 14px 60px; min-height: 34px; line-height: 1.45; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+ol.steps li::before { content: counter(st); position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-weight: 800; color: #fff; background: #1689ad; }
+ol.steps li:nth-child(2)::before { background: #e08a1e; } ol.steps li:nth-child(3)::before { background: #2f9e5b; } ol.steps li:nth-child(4)::before { background: #d6336c; }
