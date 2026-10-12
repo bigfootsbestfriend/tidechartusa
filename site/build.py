@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "35"
+CSS_VER = "36"
 
 
 def ga_tag():
@@ -1190,6 +1190,19 @@ def tipcards(tips, tone):
         for i, t, d in tips) + "</div>"
 
 
+def kt_tools(months, total):
+    """Search, month chips and sort for the long king-tide-times table (wired up in site.js)."""
+    chips = "".join(f'<button type="button" data-m="{m}">{dt.date.fromisoformat(m + "-01"):%b}</button>' for m in sorted(months)[:8])
+    month_html = (f'<div class="kt-chips" role="group" aria-label="Month of next king tide"><span>{ico("cal")} Next king tide</span>'
+                  f'<button type="button" data-m="" class="on">All</button>{chips}</div>') if len(months) > 1 else "<span></span>"
+    return f"""<div class="kt-tools" data-kt-tools>
+<label class="filter"><span>{ico("pin")} Find a spot</span><input type="search" placeholder="Type a town, bay or inlet" data-kt-q></label>
+<div class="kt-row">{month_html}
+<label class="kt-sort"><span>Sort</span><select data-kt-sort><option value="d">Soonest first</option><option value="a">Biggest above normal</option>
+<option value="h">Highest tide</option><option value="n">A to Z</option></select></label></div>
+<p class="kt-count" data-kt-count aria-live="polite">Showing all {total} spots</p></div>"""
+
+
 def kt_path(code):
     return f"king-tides/{slugify(STATES.get(code, code))}/"
 
@@ -1228,15 +1241,18 @@ def kt_state_page(code, rows, today, built_at):
                      f"when {first[3]} of {total} spots have their highest tides of the year.")
     else:
         lede_next = "King tide dates here vary from spot to spot; find yours in the table below."
-    spot_rows = []
+    spot_rows, months = [], set()
     for st, kt in sorted(rows, key=lambda r: r[0]["pretty"].lower()):
         nxt = [w for w in kt["windows"] if w[1] >= today][:3]
         if not nxt:
             continue
         a, b, pk, v = nxt[0]
         later = ", ".join(kingtides.span(x[0], x[1]) for x in nxt[1:])
+        ms = [f"{a:%Y-%m}"]  # month of the next king tide window
+        months.update(ms)
         spot_rows.append(
-            f'<tr data-n="{esc(st["pretty"].lower())}"><th scope="row"><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a></th>'
+            f'<tr data-n="{esc(st["pretty"].lower())}" data-d="{a.isoformat()}" data-h="{v:.2f}" '
+            f'data-a="{v - kt["typical"]:.2f}" data-m="{" ".join(ms)}"><th scope="row"><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a></th>'
             f'<td><b>{kingtides.span(a, b)}</b>{f"<br><small>then {later}</small>" if later else ""}</td>'
             f'<td>{ft(v)} <small>{pk:%a %b} {pk.day}, {clock(pk)}<br>{ft(v - kt["typical"])} above a typical high</small></td></tr>')
     biggest = sorted(rows, key=lambda r: -(r[1]["top"][1] - r[1]["typical"]))[:5]
@@ -1261,7 +1277,7 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 <p>The spots where the year's highest tide stands furthest above an ordinary high tide:</p>
 <ol>{big_list}</ol>
 <h2 id="spots">King tide times for your spot</h2>
-<label class="filter"><span>Filter</span><input type="search" placeholder="Type a town, bay or inlet" data-filter></label>
+{kt_tools(months, len(spot_rows))}
 <div class="scroll"><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next king tides</th><th>Highest tide</th></tr></thead>
 <tbody>{"".join(spot_rows)}</tbody></table></div>
 <h2>{ico("camera")} Photograph the king tides</h2>

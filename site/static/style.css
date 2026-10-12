@@ -590,3 +590,15 @@ ol.steps { list-style: none; counter-reset: st; padding: 0; margin: 10px 0 16px;
 ol.steps li { counter-increment: st; position: relative; padding: 14px 14px 14px 60px; min-height: 34px; line-height: 1.45; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
 ol.steps li::before { content: counter(st); position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-weight: 800; color: #fff; background: #1689ad; }
 ol.steps li:nth-child(2)::before { background: #e08a1e; } ol.steps li:nth-child(3)::before { background: #2f9e5b; } ol.steps li:nth-child(4)::before { background: #d6336c; }
+/* King tide table tools */
+.kt-tools { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0 12px; }
+.kt-tools .filter { max-width: none; margin: 0 0 10px; }
+.kt-tools .filter span, .kt-chips > span, .kt-sort span { display: inline-flex; align-items: center; gap: 5px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.kt-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.kt-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kt-chips > span { margin-right: 4px; }
+.kt-chips button { font: inherit; font-size: .9rem; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.kt-chips button.on { background: var(--sea-2); border-color: var(--sea-2); color: #fff; font-weight: 700; }
+.kt-sort { display: flex; align-items: center; gap: 8px; }
+.kt-sort select { font: inherit; font-size: .92rem; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.kt-count { margin: 10px 0 0; font-size: .85rem; color: var(--muted); }

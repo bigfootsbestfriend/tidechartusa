@@ -34,6 +34,30 @@
     });
   });
 
+  // King tide times: search, month chips and sort on one long table.
+  document.querySelectorAll("[data-kt-tools]").forEach((tools) => {
+    const tbody = document.querySelector("table.kt-spots tbody");
+    if (!tbody) return;
+    const rows = [...tbody.rows], q = tools.querySelector("[data-kt-q]"), sort = tools.querySelector("[data-kt-sort]");
+    const count = tools.querySelector("[data-kt-count]"), chips = [...tools.querySelectorAll("[data-m]")];
+    let month = "";
+    const key = { d: (r) => r.dataset.d, n: (r) => r.dataset.n, h: (r) => -parseFloat(r.dataset.h), a: (r) => -parseFloat(r.dataset.a) };
+    const apply = () => {
+      const t = norm(q.value), k = key[sort.value];
+      let shown = 0;
+      rows.forEach((r) => {
+        const ok = (!t || norm(r.dataset.n).includes(t)) && (!month || r.dataset.m.split(" ").includes(month));
+        r.hidden = !ok; if (ok) shown++;
+      });
+      rows.slice().sort((x, y) => { const a = k(x), b = k(y); return a < b ? -1 : a > b ? 1 : 0; }).forEach((r) => tbody.appendChild(r));
+      count.textContent = shown === rows.length ? `Showing all ${rows.length} spots` : shown ? `Showing ${shown} of ${rows.length} spots` : "No spots match. Try another month or name.";
+    };
+    q.addEventListener("input", apply);
+    sort.addEventListener("change", apply);
+    chips.forEach((c) => c.addEventListener("click", () => { month = c.dataset.m; chips.forEach((x) => x.classList.toggle("on", x === c)); apply(); }));
+    apply();
+  });
+
   // "Find tides near me": nearest stations to the browser's location, from the same index.
   document.querySelectorAll("[data-locate]").forEach((btn) => {
     const msg = document.querySelector("[data-locate-msg]");
