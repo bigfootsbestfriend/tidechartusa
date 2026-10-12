@@ -618,3 +618,9 @@ ul.stations.ranked li::marker { color: var(--muted); font-size: .85em; }
 .kt-more { display: block; width: 100%; margin: 10px 0 4px; padding: 11px 14px; font: inherit; font-weight: 700; border-radius: 12px;
   border: 1px solid var(--sea-2); background: var(--foam); color: var(--sea); cursor: pointer; }
 .kt-more[hidden] { display: none; }
+
+/* Tide pool season: month bars */
+.tp-bars { display: grid; gap: 4px; max-width: 520px; margin: 8px 0 16px; }
+.tp-bar { display: grid; grid-template-columns: 2.5em 1fr 2.5em; align-items: center; gap: 8px; font-size: .92em; }
+.tp-bar i { display: block; height: 14px; min-width: 2px; border-radius: 4px; background: var(--sea-2); }
+.tp-bar b { font-weight: 600; color: var(--muted); text-align: right; }

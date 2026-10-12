@@ -144,3 +144,16 @@ Sun and moon are calculated locally (`site/astro.py`).
 - `collector/extra_places.json` adds ~90 "Tides near" pages towns.py misses: small beach towns (Holden Beach, Emerald Isle, Ogunquit), spots (Sandy Hook, Sebastian Inlet, Blue Heron Bridge) and SoCal cities with no station within 15 mi (Carlsbad, Malibu: `"r": 30`). `"region": true` entries (Oahu, Maui, Cape Cod, Outer Banks, Puget Sound, LBI...) say "Tides around", list up to 12 stations with each one's town, and skip the places box.
 - `aka` maps a town key to other names people search (OCMD, OCNJ, HHI, St. Augustine, Jax Beach, OBX, LBI...). Shown in the title/H1/lede and matched by site search (7th field in search.json).
 - Picked from Semrush US "<place> tide chart/tides" keywords (Oct 2026) with no matching page. Add more the same way.
+
+## Tide pools (2026-10-12)
+
+- `/tide-pools/` hub + `/tide-pools/<state>/` for every state with yearly data. Math in `site/lowtides.py`: a spot's tide pool lows are
+  its lowest 10% of lows for the next 12 months that come between an hour after sunrise and sunset (one per day; runs of days grouped).
+- State page: "mostly <3 best months in a row>" lede, month bars (avg good days per spot), statewide windows (reuses
+  `kingtides.state_windows`, 25% of spots), favorite spots, then every spot's next lows with the king-tide table tools
+  (`kt_tools` now takes a chip label and sort options).
+- `TP_SPOTS` in build.py: ~45 famous tide pools (La Jolla, Fitzgerald, Haystack Rock, Yaquina Head, Rialto, Acadia...), each
+  matched to the nearest station with yearly data within 15 mi.
+- Station pages: "Best tide pool days here" line under the daylight lows. State pages and the footer link the pages.
+- Targets "tide pools near me" (4.4k/mo, KD 22), "<place> tide pools" searches. Next seasonal ideas: razor clam digs (WA/OR, in season
+  Oct–May), grunion runs (CA, Mar–Aug; schedule out each winter).

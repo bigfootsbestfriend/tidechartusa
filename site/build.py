@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import astro  # noqa: E402
 import kingtides  # noqa: E402
+import lowtides  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -128,7 +129,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "40"
+CSS_VER = "41"
 
 
 def ga_tag():
@@ -193,7 +194,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -918,6 +919,8 @@ def station_page(st, ctx):
 <div class="scroll"><table class="tides week"><thead><tr><th>Day</th><th>High and low tides</th><th>Sunrise / sunset</th><th>Moon</th></tr></thead>
 <tbody>{week_rows}</tbody></table></div>"""
     kt_line = kt_station_line(st, ctx["kt"], ctx["today"]) if ctx.get("kt") else ""
+    if dl_html and ctx.get("tp"):
+        dl_html += tp_station_line(st, ctx["tp"], ctx["today"])
     month_html = f"""<h2 id="month">Tide table: {m_title}</h2>
 {kt_line}
 <p class="tools"><button type="button" data-print>Print this tide table</button> <button type="button" data-ics>Add tides to my calendar (.ics)</button>{year_links}</p>
@@ -1203,16 +1206,18 @@ def list_tools(total, refs):
 <p class="kt-count" data-lcount aria-live="polite">Showing all {total} spots</p></div>"""
 
 
-def kt_tools(months, total):
-    """Search, month chips and sort for the long king-tide-times table (wired up in site.js)."""
+KT_SORTS = (("d", "Soonest first"), ("a", "Biggest above normal"), ("h", "Highest tide"), ("n", "A to Z"))
+
+
+def kt_tools(months, total, chip_label="Next king tide", sorts=KT_SORTS):
+    """Search, month chips and sort for a long spot table (king tides, tide pools; wired up in site.js)."""
     chips = "".join(f'<button type="button" data-m="{m}">{dt.date.fromisoformat(m + "-01"):%b}</button>' for m in sorted(months)[:8])
-    month_html = (f'<div class="kt-chips" role="group" aria-label="Month of next king tide"><span>{ico("cal")} Next king tide</span>'
+    month_html = (f'<div class="kt-chips" role="group" aria-label="Month"><span>{ico("cal")} {chip_label}</span>'
                   f'<button type="button" data-m="" class="on">All</button>{chips}</div>') if len(months) > 1 else "<span></span>"
     return f"""<div class="kt-tools" data-kt-tools>
 <label class="filter"><span>{ico("pin")} Find a spot</span><input type="search" placeholder="Type a town, bay or inlet" data-kt-q></label>
 <div class="kt-row">{month_html}
-<label class="kt-sort"><span>Sort</span><select data-kt-sort><option value="d">Soonest first</option><option value="a">Biggest above normal</option>
-<option value="h">Highest tide</option><option value="n">A to Z</option></select></label></div>
+<label class="kt-sort"><span>Sort</span><select data-kt-sort>{"".join(f'<option value="{v}">{t}</option>' for v, t in sorts)}</select></label></div>
 <p class="kt-count" data-kt-count aria-live="polite">Showing all {total} spots</p></div>"""
 
 
@@ -1364,6 +1369,201 @@ daily high tides. Predictions don't include wind, storms or rain. Not for naviga
                 f"When are the king tides? Dates for the {season} king tides in every coastal state, with peak times and heights for each NOAA tide station.",
                 "king-tides/", body, crumbs=[("Home", ""), ("King tides", "king-tides/")], scripts=("units.js", "site.js"))
 
+# Famous tide pool spots: name, state, lat, lng. Each is matched to its nearest NOAA station with a year of predictions.
+TP_SPOTS = [
+    ("La Jolla tide pools", "CA", 32.8435, -117.2810), ("Cabrillo National Monument", "CA", 32.6680, -117.2450),
+    ("Crystal Cove State Park", "CA", 33.5710, -117.8400), ("Laguna Beach tide pools", "CA", 33.5420, -117.7850),
+    ("Point Fermin, San Pedro", "CA", 33.7050, -118.2900), ("Leo Carrillo State Park", "CA", 34.0450, -118.9350),
+    ("Montaña de Oro", "CA", 35.2700, -120.8900), ("Shell Beach, Pismo", "CA", 35.1550, -120.6700),
+    ("Point Lobos", "CA", 36.5200, -121.9500), ("Asilomar, Pacific Grove", "CA", 36.6200, -121.9400),
+    ("Natural Bridges, Santa Cruz", "CA", 36.9500, -122.0600), ("Pigeon Point", "CA", 37.1820, -122.3940),
+    ("Fitzgerald Marine Reserve", "CA", 37.5230, -122.5170), ("Duxbury Reef, Bolinas", "CA", 37.8900, -122.7000),
+    ("Salt Point State Park", "CA", 38.5650, -123.3300), ("Trinidad State Beach", "CA", 41.0600, -124.1450),
+    ("Harris Beach, Brookings", "OR", 42.0650, -124.3100), ("Cape Arago & Sunset Bay", "OR", 43.3050, -124.3900),
+    ("Strawberry Hill", "OR", 44.2500, -124.1120), ("Cape Perpetua", "OR", 44.2800, -124.1100),
+    ("Seal Rock", "OR", 44.4970, -124.0830), ("Yaquina Head", "OR", 44.6770, -124.0780),
+    ("Otter Rock (Devil's Punchbowl)", "OR", 44.7530, -124.0650), ("Haystack Rock, Cannon Beach", "OR", 45.8840, -123.9680),
+    ("Kalaloch (Beach 4)", "WA", 47.5700, -124.3700), ("Second Beach, La Push", "WA", 47.8900, -124.6200),
+    ("Rialto Beach (Hole-in-the-Wall)", "WA", 47.9300, -124.6500), ("Shi Shi Beach & Point of the Arches", "WA", 48.2700, -124.6900),
+    ("Salt Creek Recreation Area", "WA", 48.1650, -123.7000), ("Rosario Beach, Deception Pass", "WA", 48.4170, -122.6650),
+    ("Alki Beach, Seattle", "WA", 47.5800, -122.4100), ("Lincoln Park, Seattle", "WA", 47.5300, -122.3950),
+    ("Bishop's Beach, Homer", "AK", 59.6400, -151.5500), ("Shark's Cove, Oʻahu", "HI", 21.6500, -158.0620),
+    ("Makapuʻu tide pools, Oʻahu", "HI", 21.3100, -157.6600), ("Ship Harbor, Acadia", "ME", 44.2300, -68.3230),
+    ("Wonderland, Acadia", "ME", 44.2350, -68.3150), ("Pemaquid Point", "ME", 43.8370, -69.5080),
+    ("Two Lights, Cape Elizabeth", "ME", 43.5650, -70.2000), ("Odiorne Point, Rye", "NH", 43.0400, -70.7150),
+    ("Halibut Point, Rockport", "MA", 42.6900, -70.6300), ("Nahant", "MA", 42.4200, -70.9100),
+    ("Beavertail, Jamestown", "RI", 41.4500, -71.4000), ("Brenton Point, Newport", "RI", 41.4500, -71.3600),
+    ("Coral Cove Park, Jupiter", "FL", 26.9800, -80.0700),
+]
+TP_TIPS = [
+    ("clock", "Go before the low", "Arrive about an hour before low tide and head back as soon as the water turns."),
+    ("waves", "Watch the waves", "Sneaker waves run far up rocky shores, especially on the Pacific. Never turn your back on the ocean."),
+    ("walk", "Step on bare rock", "Seaweed and barnacles are slippery and alive. Wear shoes with grip and step on bare rock or sand."),
+    ("pool", "Look, don't take", "Touch gently with a wet finger, put rocks back as you found them, and leave animals and shells. Many tide pools are protected."),
+]
+
+
+def tp_path(code):
+    return f"tide-pools/{slugify(STATES.get(code, code))}/"
+
+
+def tp_upcoming(tp, today, n=3):
+    return [r for r in lowtides.runs(tp["good"]) if r[1].date() >= today][:n]
+
+
+def tp_when(w):
+    """'morning' / 'midday' / 'afternoon' for a low tide time."""
+    return "morning" if w.hour < 11 else "midday" if w.hour < 14 else "afternoon"
+
+
+def tp_months(rows, today):
+    """[(YYYY-MM, average tide pool days per spot)] for the next 12 months."""
+    keys = [f"{(today.replace(day=1) + dt.timedelta(days=32 * i)):%Y-%m}" for i in range(12)]
+    keys = list(dict.fromkeys(keys))[:12]
+    return [(k, sum(tp["months"].get(k, 0) for _, tp in rows) / len(rows)) for k in keys]
+
+
+def tp_best_months(months):
+    """'June to August': the three months in a row with the most tide pool days (months: next 12, in order)."""
+    i = max(range(len(months) - 2), key=lambda j: sum(v for _, v in months[j:j + 3]))
+    name = lambda k: dt.date.fromisoformat(k + "-01").strftime("%B")
+    return f"{name(months[i][0])} to {name(months[i + 2][0])}"
+
+
+def tp_station_line(st, tp, today):
+    nxt = tp_upcoming(tp, today, 3)
+    if not nxt:
+        return ""
+    a, b, (lw, lv) = nxt[0]
+    state = STATES.get(st["state"], st["state"])
+    later = ", ".join(kingtides.span(x[0].date(), x[1].date()) for x in nxt[1:])
+    return (f'<p class="tip">{ico("pool")} <b>Best tide pool days here:</b> {kingtides.span(a.date(), b.date())}, lowest {ft(lv)} '
+            f'on {lw:%a %b} {lw.day} at {clock(lw)}{f"; then {later}" if later else ""}. '
+            f'<a href="{BASE}{tp_path(st["state"])}">Tide pooling in {esc(state)}</a></p>')
+
+
+def tp_spot_rows(spots, today, show_state=False):
+    """Table rows for famous spots: [(sortkey, html)]."""
+    out = []
+    for name, code, st, tp, d in spots:
+        nxt = tp_upcoming(tp, today, 3)
+        if not nxt:
+            continue
+        a, b, (lw, lv) = nxt[0]
+        later = ", ".join(kingtides.span(x[0].date(), x[1].date()) for x in nxt[1:])
+        out.append((name, f'<tr><th scope="row">{esc(name)}{f" <small>{code}</small>" if show_state else ""}<br><small>Tides: '
+                          f'<a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a>{f", {d:.0f} mi" if d >= 1 else ""}</small></th>'
+                          f'<td><b>{kingtides.span(a.date(), b.date())}</b>{f"<br><small>then {later}</small>" if later else ""}</td>'
+                          f'<td>{ft(lv)} <small>{lw:%a %b} {lw.day}, {clock(lw)}</small></td></tr>'))
+    return [h for _, h in out]
+
+
+def tp_month_bars(months):
+    top = max(v for _, v in months) or 1
+    return '<div class="tp-bars">' + "".join(
+        f'<div class="tp-bar"><span>{dt.date.fromisoformat(k + "-01"):%b}</span><i style="width:{v / top * 100:.0f}%"></i>'
+        f'<b>{v:.1f}</b></div>' for k, v in months) + "</div>"
+
+
+def tp_state_page(code, rows, spots, today):
+    """Tide pooling in one state: when the best daylight lows come, the famous spots, then every spot's next ones."""
+    state = STATES.get(code, code)
+    path = tp_path(code)
+    months = tp_months(rows, today)
+    best = tp_best_months(months)
+    wins = [w for w in kingtides.state_windows([{"days": {w.date() for w, _ in tp["good"]}} for _, tp in rows]) if w[1] >= today]
+    win_rows = "".join(f'<tr><td><b>{kingtides.span(a, b)}</b></td><td>{pk:%a %b} {pk.day}</td><td>{n} of {t} spots</td></tr>'
+                       for a, b, pk, n, t in wins[:8])
+    first = wins[0] if wins else None
+    lede_next = (f"The next stretch of tide pool lows across the state is <b>{kingtides.span(first[0], first[1])}</b>."
+                 if first else "")
+    spot_rows, mset = [], set()
+    for st, tp in sorted(rows, key=lambda r: r[0]["pretty"].lower()):
+        nxt = tp_upcoming(tp, today, 3)
+        if not nxt:
+            continue
+        a, b, (lw, lv) = nxt[0]
+        later = ", ".join(kingtides.span(x[0].date(), x[1].date()) for x in nxt[1:])
+        soon = sum(1 for w, _ in tp["good"] if today <= w.date() < today + dt.timedelta(days=90))
+        mset.add(f"{a:%Y-%m}")
+        spot_rows.append((a.date(), st["pretty"].lower(),
+            f'<tr data-n="{esc(st["pretty"].lower())}" data-d="{a.date().isoformat()}" data-h="{-lv:.2f}" data-a="{soon}" '
+            f'data-m="{a:%Y-%m}"><th scope="row"><a href="{BASE}{st["path"]}">{esc(st["pretty"])}</a></th>'
+            f'<td><b>{kingtides.span(a.date(), b.date())}</b> <small>{tp_when(lw)}{"s" if b.date() > a.date() else ""}</small>{f"<br><small>then {later}</small>" if later else ""}</td>'
+            f'<td>{ft(lv)} <small>{lw:%a %b} {lw.day}, {clock(lw)}<br>{soon} good day{"s" if soon != 1 else ""} in the next 3 months</small></td></tr>'))
+    famous = tp_spot_rows([s for s in spots if s[1] == code], today)
+    famous_html = (f'<h2>{ico("star")} Favorite tide pools in {esc(state)}</h2><div class="scroll"><table class="tides kt-wins">'
+                   f'<thead><tr><th>Tide pools</th><th>Next good low tides</th><th>Lowest</th></tr></thead><tbody>{"".join(famous)}</tbody></table></div>'
+                   ) if famous else ""
+    body = f"""
+<article class="kt">
+<h1>Tide pooling in {esc(state)}: best low tides</h1>
+<p class="lede">The best tide pool days are low tides that are among a spot's lowest of the year and fall in daylight. In
+{esc(state)} they come mostly in <b>{best}</b>. {lede_next} Dates, times and heights below come from NOAA predictions for
+{len(rows)} spots, worked out for the next 12 months.</p>
+<p class="tools"><a href="{BASE}tide-pools/">Tide pools in every state</a> · <a href="{BASE}{kt_path(code)}">{esc(state)} king tides</a></p>
+<h2>{ico("cal")} Tide pool season in {esc(state)}</h2>
+<p>Average number of good tide pool days per spot, month by month:</p>
+{tp_month_bars(months)}
+{f'<h2>Best tide pool days statewide</h2><div class="scroll"><table class="tides kt-wins"><thead><tr><th>Dates</th><th>Best day</th><th>Spots with a good low that day</th></tr></thead><tbody>{win_rows}</tbody></table></div>' if win_rows else ""}
+{famous_html}
+<h2 id="spots">Tide pool lows for your spot</h2>
+{kt_tools(mset, len(spot_rows), "Next good low", (("d", "Soonest first"), ("h", "Lowest tide"), ("a", "Most days in 3 months"), ("n", "A to Z")))}
+<div class="scroll kt-box" data-kt-box><table class="tides kt-spots"><thead><tr><th>Spot</th><th>Next tide pool lows</th><th>Lowest</th></tr></thead>
+<tbody>{"".join(r for _, _, r in sorted(spot_rows))}</tbody></table></div>
+<button type="button" class="kt-more" data-kt-more hidden>Show all {len(spot_rows)} spots</button>
+<h2>{ico("warn")} Tide pool tips</h2>
+{tipcards(TP_TIPS, "safe")}
+<h2>How these dates are worked out</h2>
+<p>For every spot we take NOAA's low tide predictions for the next 12 months. A low counts as a tide pool low when it's in
+that spot's lowest 10% and comes between an hour after sunrise and sunset, so there's light for the hour before it. Heights are feet above mean lower low water (MLLW), the zero on
+tide charts; below zero is a minus tide. Wind and swell can keep the water higher than predicted. Not for navigation.</p>
+</article>"""
+    title = f"Tide Pooling in {state}: Best Low Tides {kingtides.season_label(today)}"
+    desc = (f"When are the best tide pool days in {state}? Mostly {best}. " +
+            (f"Next: {kingtides.span(first[0], first[1])}. " if first else "") +
+            f"Daylight low tide dates, times and heights for {len(rows)} spots.")
+    return path, page(title, desc, path, body, crumbs=[("Home", ""), ("Tide pools", "tide-pools/"), (state, path)],
+                      scripts=("units.js", "site.js"))
+
+
+def tp_hub(by_state, spots, today):
+    blocks = []
+    for label, codes in REGIONS:
+        rows = []
+        for c in codes.split():
+            r = by_state.get(c)
+            if not r:
+                continue
+            rows.append(f'<tr><th scope="row"><a href="{BASE}{tp_path(c)}">{esc(STATES.get(c, c))}</a></th>'
+                        f'<td>{tp_best_months(tp_months(r, today))}</td><td>{len(r)}</td></tr>')
+        if rows:
+            blocks.append(f'<h3>{esc(label)}</h3><div class="scroll"><table class="tides kt-hub"><thead><tr><th>State</th>'
+                          f'<th>Best months</th><th>Spots</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div>')
+    famous = tp_spot_rows(spots, today, show_state=True)
+    body = f"""
+<article class="kt">
+<h1>Tide pools: the best low tides near you</h1>
+<p class="lede">Tide pooling is best on the lowest daylight tides of the year, when sea stars, anemones, crabs and
+nudibranchs are left in pools on uncovered rock. Here's when those tides come at well-known tide pools, and in every
+coastal state, from NOAA predictions for the next 12 months.</p>
+<div class="search"><input type="search" placeholder="Find your beach, pier or harbor" aria-label="Search spots" data-search autocomplete="off"><div class="results" data-results hidden></div></div>
+<h2>{ico("star")} Famous tide pools: next good low tides</h2>
+<div class="scroll"><table class="tides kt-wins"><thead><tr><th>Tide pools</th><th>Next good low tides</th><th>Lowest</th></tr></thead>
+<tbody>{"".join(famous)}</tbody></table></div>
+<h2>{ico("cal")} When is tide pool season?</h2>
+<p>It depends on the coast: the lowest daylight tides come in different months, and at different times of day, around the country.</p>
+{"".join(blocks)}
+<h2>{ico("warn")} Tide pool tips</h2>
+{tipcards(TP_TIPS, "safe")}
+<p class="note">A low counts as a tide pool low when it's in that spot's lowest 10% for the next 12 months and comes between
+an hour after sunrise and sunset. Each spot's own page lists every low tide. Not for navigation.</p>
+</article>"""
+    return page(f"Tide Pools Near Me: Best Low Tides {kingtides.season_label(today)}",
+                "The best low tides for tide pooling at famous tide pools and in every coastal state: dates, times and heights from NOAA predictions.",
+                "tide-pools/", body, crumbs=[("Home", ""), ("Tide pools", "tide-pools/")], scripts=("units.js", "site.js"))
+
+
 EMBED_JS = """(() => {
   const d = JSON.parse(document.getElementById("d").textContent), ev = d.ev, now = Date.now() / 1000;
   const fmt = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: d.tz });
@@ -1512,7 +1712,7 @@ Tap a station for its full chart, the week ahead, currents, an hourly fishing fo
                       f"currents, an hourly fishing forecast and the marine forecast.", path, body, crumbs=crumbs, scripts=("units.js",))
 
 
-def state_page(code, stations, towns=(), kings=False):
+def state_page(code, stations, towns=(), kings=False, pools=False):
     state = STATES.get(code, code)
     refs = sum(1 for s in stations if s["type"] == "R")
     lis = []
@@ -1533,6 +1733,7 @@ stations with their own long-term measurements; the rest are calculated from the
 {list_tools(len(stations), refs)}
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 {f'<p class="tip">{ico("cal")} <a href="{BASE}{kt_path(code)}">King tide dates for {esc(state)}</a>: when the year\'s highest tides arrive at every spot.</p>' if kings else ""}
+{f'<p class="tip">{ico("pool")} <a href="{BASE}{tp_path(code)}">Best tide pool days in {esc(state)}</a>: the lowest daylight tides at every spot.</p>' if pools else ""}
 <ul class="stations">{items}</ul>
 {town_list}"""
     path = f"tides/{slugify(state)}/"
@@ -1999,7 +2200,7 @@ def main():
 
     years = sorted(int(p.name) for p in YEAR_DIR.glob("*") if p.name.isdigit()) if YEAR_DIR.exists() else []
     year_pages = []
-    kt_by_state = {}
+    kt_by_state, tp_by_state = {}, {}
     groups = {}
     popular = {}
     built_data = {}
@@ -2027,6 +2228,9 @@ def main():
         ctx["kt"] = kingtides.windows_for(raws, tz, today) if raws else None
         if ctx["kt"]:
             kt_by_state.setdefault(s["state"], []).append((s, ctx["kt"]))
+        ctx["tp"] = lowtides.lows_for(raws, tz, s["lat"], s["lng"], today) if raws else None
+        if ctx["tp"]:
+            tp_by_state.setdefault(s["state"], []).append((s, ctx["tp"]))
         write(s["path"] + "index.html", station_page(s, ctx))
         for y in ctx["years"]:
             yp = year_page(s, y, raws[y], tz)
@@ -2065,7 +2269,7 @@ def main():
         by_state_towns.setdefault(tn[1], []).append((tn[0], path))
 
     for code, g in groups.items():
-        path, html_ = state_page(code, g, by_state_towns.get(code, ()), code in kt_by_state)
+        path, html_ = state_page(code, g, by_state_towns.get(code, ()), code in kt_by_state, code in tp_by_state)
         write(path + "index.html", html_)
     kt_pages = []
     if kt_by_state:
@@ -2077,6 +2281,20 @@ def main():
             kt_pages.append(path)
         write("king-tides/index.html", kt_hub(kt_by_state, kt_today))
         kt_pages.insert(0, "king-tides/")
+    if tp_by_state:
+        tp_today = built_at.date()
+        all_tp = [(st, tp) for rows in tp_by_state.values() for st, tp in rows]
+        spots = []
+        for name, code, la, lo in TP_SPOTS:
+            d, (st, tp) = min(((miles({"lat": la, "lng": lo}, st), (st, tp)) for st, tp in all_tp), key=lambda x: x[0])
+            if d <= 15:
+                spots.append((name, code, st, tp, d))
+        for code, rows in tp_by_state.items():
+            path, html_ = tp_state_page(code, rows, spots, tp_today)
+            write(path + "index.html", html_)
+            kt_pages.append(path)
+        write("tide-pools/index.html", tp_hub(tp_by_state, spots, tp_today))
+        kt_pages.append("tide-pools/")
     live = [s for g in groups.values() for s in g]
     write(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
     # Bing Webmaster Tools site ownership (the account's code, public by design).
@@ -2127,7 +2345,7 @@ def main():
     host = urlparse(SITE_URL).hostname or ""
     if not host.endswith("github.io"):
         write("CNAME", host + "\n")
-    print(f"built {len(town_pages)} town pages, {len(year_pages)} year tide tables, {len(kt_pages)} king tide pages")
+    print(f"built {len(town_pages)} town pages, {len(year_pages)} year tide tables, {len(kt_pages)} king tide + tide pool pages")
     print(f"built {built} station pages, {len(groups)} states" + ("" if LAUNCHED else " (noindex)"))
 
 
