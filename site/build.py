@@ -1570,7 +1570,8 @@ CLAM_BEACHES = [  # name, state, open-coast NOAA station id (not the nearer bay 
     ("Twin Harbors", "WA", "9441102", "From Willapa Bay north to the south jetty at the mouth of Grays Harbor."),
     ("Copalis", "WA", "9441156", "From the north jetty at Grays Harbor to the Copalis River."),
     ("Mocrocks", "WA", "9441627", "From the Copalis River to the Quinault Indian Reservation."),
-    ("Kalaloch", "WA", "9442396", "From the South Beach campground north to Olympic National Park Beach Trail 3."),
+    ("Kalaloch", "WA", "9442396", "From the South Beach campground north to Olympic National Park Beach Trail 3. Closed for the 2026–27 season "
+                                         "because of low clam numbers (WDFW)."),
     ("Clatsop beaches", "OR", "9440574", "From the Columbia River south past Gearhart and Seaside to Tillamook Head: about 95% of Oregon's razor clamming."),
 ]
 CLAM_RULES = {
