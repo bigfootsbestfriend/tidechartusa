@@ -1,5 +1,5 @@
 {
-"_note": "Beach towns, islands and spots people search for ('holden beach tide chart', 'oahu tides') that towns.py misses (too small, or not a GeoNames town). Each gets a 'Tides near' page. r = station radius in miles (default 15), region = an island/bay/coast rather than a town. aka = other names people search for an existing or extra place; shown on its page and matched by the site search. Sources: Semrush US tide-chart keywords, Oct 2026; coordinates from GeoNames cities500 or the place's center.",
+"_note": "Beach towns, islands and spots people search for ('holden beach tide chart', 'oahu tides') that towns.py misses (too small, or not a GeoNames town). Each gets a 'Tides near' page. r = station radius in miles (default 15), region = an island/bay/coast rather than a town. aka = other names people search for an existing or extra place; shown on its page and matched by the site search. Sources: Semrush US tide-chart keywords, Oct 2026; coordinates from GeoNames cities500 or the place's center. keep = towns with real tide searches that the duplicate/inland rules would otherwise drop (Semrush, Oct 2026).",
 "places": [
 ["Oak Island", "NC", 33.9166, -78.1611],
 ["Holden Beach", "NC", 33.9135, -78.3039],
@@ -118,5 +118,43 @@
 "NJ|Long Beach Island": ["LBI"],
 "SC|Edisto Beach": ["Edisto Island"],
 "MA|Dennis": ["Sesuit Harbor"]
-}
+},
+"keep": [
+"CA|Pacifica",
+"CA|Coronado",
+"CA|Goleta",
+"CA|Capitola",
+"CA|Pacific Grove",
+"CA|Mill Valley",
+"CA|Oxnard",
+"CT|Norwalk",
+"RI|Warwick",
+"RI|Warren",
+"TX|Seabrook",
+"MA|Swampscott",
+"MA|Kingston",
+"MA|Yarmouth",
+"FL|Fort Myers",
+"NY|Stony Brook",
+"NY|Mamaroneck",
+"NC|Leland",
+"AS|Pago Pago",
+"PR|Dorado",
+"PR|Cabo Rojo",
+"PR|Humacao",
+"PR|Cataño",
+"LA|New Orleans",
+"MD|Ocean Pines",
+"DC|Washington",
+"HI|Kapa‘a",
+"CA|Seaside",
+"CA|Marina",
+"CA|Rancho Palos Verdes",
+"CA|McKinleyville",
+"MA|Revere",
+"MA|East Boston",
+"PR|Río Grande",
+"PR|Guayama",
+"GU|Tamuning-Tumon-Harmon Village"
+]
 }

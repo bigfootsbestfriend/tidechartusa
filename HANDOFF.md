@@ -157,3 +157,19 @@ Sun and moon are calculated locally (`site/astro.py`).
 - Station pages: "Best tide pool days here" line under the daylight lows. State pages and the footer link the pages.
 - Targets "tide pools near me" (4.4k/mo, KD 22), "<place> tide pools" searches. Next seasonal ideas: razor clam digs (WA/OR, in season
   Oct–May), grunion runs (CA, Mar–Aug; schedule out each winter).
+
+## Town page pruning (2026-10-12)
+
+Mike asked whether the site's size could be penalized. Size alone isn't, but mass near-copies are (Google's scaled content /
+doorway policies, judged site-wide). ~350 town pages showed exactly the same stations as another page (inland suburbs like
+Adelphi/Landover MD, Hartford CT, Boston neighbourhoods) and a few weren't towns at all ("VA Boston Healthcare System").
+
+- Kept: a station's own town; everything in extra_places.json (`places`, `aka` and the new `keep` list of searched towns:
+  Pacifica, Coronado, Norwalk, Revere...); names with a water word (`TOWN_WATER`: Beach, Island, Harbor, Haven, Point...);
+  towns with a station within 2 mi; otherwise one page (the biggest town) per set of 3 closest stations among towns
+  within 5 mi of a station. Inland towns (>5 mi) get no page.
+- `TOWN_JUNK` drops hospitals, campuses, malls and bases before station titles use them.
+- Dropped URLs get a tiny noindex page with a canonical + instant redirect to the nearest kept town (nothing links to them;
+  they're out of the sitemap and search). The list is written to data/town_pages_dropped.txt on each build.
+- About 450 of 2,100 town pages dropped. Check Search Console's Pages report in a few weeks: if "Crawled - currently not indexed"
+  is large for town or year pages, prune further the same way.

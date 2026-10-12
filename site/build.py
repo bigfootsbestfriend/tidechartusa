@@ -1648,6 +1648,13 @@ def places_section(name, places, heading=None):
             f'<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>; links open in Google Maps.</p></section>')
 
 
+TOWN_COAST_MILES = 5  # towns further than this from any tide station are inland: no page unless listed
+TOWN_WATER_MILES = 2  # a town this close to a station is on the water: always its own page
+TOWN_WATER = re.compile(r"Beach|Island|Isle|Harbou?r|Haven|Port\b|Bay\b|Shores?\b|Point\b|Cove\b|Inlet|Key\b|Cape\b|Ocean|Sea\b|Pier", re.I)
+# GeoNames "places" that aren't towns anyone looks up tides for.
+TOWN_JUNK = re.compile(r"Healthcare|Hospital|Medical|Campus|Airport|\bMall\b|Correctional|Prison|Naval Academy|Downs Station|Kodiak Station")
+
+
 def town_path(name, st):
     return f"tides-near/{slugify(name)}-{st.lower()}/"
 
@@ -2185,6 +2192,7 @@ def main():
     for name, st, la, lo, *opt in extra["places"]:
         towns["towns"].setdefault(f"{st}|{name}", [name, st, la, lo, 0] + opt)
     town_aka = extra["aka"]
+    towns["towns"] = {k: v for k, v in towns["towns"].items() if not TOWN_JUNK.search(v[0])}
     for st_ in stations:
         t = towns["stations"].get(st_["id"])
         if t and t[0] in towns["towns"]:
@@ -2245,8 +2253,11 @@ def main():
         groups.setdefault(s["state"], []).append(s)
         built += 1
 
-    # Town pages: every town with at least one built station within 15 miles.
-    town_pages, by_state_towns = [], {}
+    # Town pages. Every town with a built station within 15 miles is a candidate. Kept: a station's own town, a hand-picked
+    # or searched place (extra_places.json), a town with a water word in its name, a town right on the water (station within
+    # TOWN_WATER_MILES), and otherwise one page per set of closest stations among towns within TOWN_COAST_MILES. That
+    # drops inland suburbs that would all repeat the same few stations (Google treats mass near-copies as low value).
+    town_pages, by_state_towns, cand = [], {}, {}
     tlist = [(k, v) for k, v in towns["towns"].items()]
     for k, tn in tlist:
         pt = {"lat": tn[2], "lng": tn[3]}
@@ -2257,8 +2268,38 @@ def main():
         if opt.get("r", 15) > 15:  # islands and coasts reach past the neighbouring cells
             near = sorted(((miles(pt, o), o) for o in stations if o["id"] in built_data), key=lambda x: x[0])
         near = [(d, built_data[o["id"]]) for d, o in near if d <= opt.get("r", 15)][:12 if opt.get("region") else 8]
-        if not near:
+        if near:
+            cand[k] = (tn, near, opt)
+    protected = {t[0] for t in towns["stations"].values()} | {f"{p[1]}|{p[0]}" for p in extra["places"]} | set(extra.get("keep", []))
+    keep, by_set, paths = set(), {}, {}
+    for k, (tn, near, opt) in cand.items():
+        if k in protected or TOWN_WATER.search(tn[0]) or near[0][0] <= TOWN_WATER_MILES:
+            keep.add(k)
+        elif near[0][0] <= TOWN_COAST_MILES:
+            by_set.setdefault(tuple(x[1][0]["id"] for x in near[:3]), []).append(k)
+    shown = {tuple(x[1][0]["id"] for x in cand[k][1][:3]) for k in keep}
+    for ids, ks in by_set.items():
+        if ids not in shown:  # one page per set of closest stations: the biggest town
+            keep.add(max(ks, key=lambda k: cand[k][0][4]))
+    for k in sorted(keep, key=lambda k: (k not in protected, k)):  # two names, one URL (Kihei / Kīhei): first wins
+        paths.setdefault(town_path(cand[k][0][0], cand[k][0][1]), k)
+    keep = set(paths.values())
+    (DATA / "town_pages_dropped.txt").write_text("".join(sorted({town_path(cand[k][0][0], cand[k][0][1]) + "\n" for k in cand} - {p + "\n" for p in paths})))
+    tlist = [(k, v) for k, v in tlist if k in keep]
+    # Dropped pages may already be crawled or bookmarked: send each to the nearest kept town (noindex, canonical).
+    kept_pts = [(cand[k][0][2], cand[k][0][3], town_path(cand[k][0][0], cand[k][0][1])) for k in keep]
+    for k in set(cand) - keep:
+        tn = cand[k][0]
+        old = town_path(tn[0], tn[1])
+        if old in paths:
             continue
+        to = min(kept_pts, key=lambda p: (p[0] - tn[2]) ** 2 + ((p[1] - tn[3]) * math.cos(math.radians(tn[2]))) ** 2)[2]
+        write(old + "index.html", f'<!doctype html><meta charset="utf-8"><title>Tides near {esc(tn[0])}</title>'
+              f'<meta name="robots" content="noindex"><link rel="canonical" href="{SITE_URL}/{to}">'
+              f'<meta http-equiv="refresh" content="0; url={BASE}{to}"><a href="{BASE}{to}">Tides near {esc(tn[0])}</a>')
+    for k, tn in tlist:
+        pt = {"lat": tn[2], "lng": tn[3]}
+        _, near, opt = cand[k]
         others = sorted((miles(pt, {"lat": o[2], "lng": o[3]}), o[0], town_path(o[0], o[1])) for kk, o in tlist
                         if kk != k and abs(o[2] - tn[2]) < 0.5 and abs(o[3] - tn[3]) < 0.6)
         others = [x for x in others if 0.3 < x[0] <= 25][:8]
