@@ -42,6 +42,7 @@ SITE_NAME = "Shorebite"
 # Google Analytics 4 measurement ID (G-...). Empty = no analytics tag.
 GA_ID = os.environ.get("GA_ID", "")
 CF_BEACON = os.environ.get("CF_BEACON", "")  # Cloudflare Web Analytics token (cookieless)
+CLICKY_ID = os.environ.get("CLICKY_ID", "")  # Clicky site id
 # Email signups (alerts/ Worker). Empty hides every signup form; set once Resend is verified.
 ALERTS_API = os.environ.get("ALERTS_API", "")
 
@@ -141,6 +142,8 @@ def ga_tag():
     if CF_BEACON:
         out += ('\n<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
                 f"data-cf-beacon='{{\"token\": \"{CF_BEACON}\"}}'></script>")
+    if CLICKY_ID:
+        out += f'\n<script async data-id="{CLICKY_ID}" src="//static.getclicky.com/js"></script>'
     return out
 
 
@@ -2129,6 +2132,8 @@ ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits 
                   "You can opt out with <a href=\"https://tools.google.com/dlpage/gaoptout\">Google's opt-out add-on</a> or by blocking cookies. "
                   "We also use Cloudflare Web Analytics, which sets no cookies and only gives us aggregated counts "
                   "(<a href=\"https://www.cloudflare.com/privacypolicy/\">Cloudflare's privacy policy</a>). "
+                  "We also use Clicky to see how visitors move through the site "
+                  "(<a href=\"https://clicky.com/terms/privacy\">Clicky's privacy policy</a>). "
                   "If we add advertising, this page will be updated to name those partners and explain your choices.</p>") if GA_ID else \
                  ("<p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, "
                   "and this page will be updated to name them and explain your choices.</p>")
