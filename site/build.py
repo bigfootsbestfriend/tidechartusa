@@ -128,7 +128,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "39"
+CSS_VER = "40"
 
 
 def ga_tag():
@@ -197,6 +197,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
+<script src="{BASE}static/track.js?v={CSS_VER}" defer></script>
 </body>
 </html>
 """
