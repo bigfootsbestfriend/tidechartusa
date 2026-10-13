@@ -591,6 +591,12 @@ FISH_HERE = json.loads(SPECIES_FILE.read_text()) if SPECIES_FILE.exists() else {
 HAB = {"s": "Salt water", "b": "Brackish water", "f": "Fresh water", "?": ""}
 
 
+GAME_FISH = re.compile(r"(?i)\b(red drum|black drum|drum|redfish|seatrout|weakfish|flounder|fluke|halibut|striped bass|sea bass|snook|tarpon|"
+                       r"bluefish|sheepshead|croaker|whiting|kingfish|pompano|mackerel|cobia|snapper|grouper|tautog|scup|porgy|"
+                       r"bonefish|permit|jack|ladyfish|rockfish|lingcod|surfperch|perch|cod|haddock|pollock|salmon|steelhead|"
+                       r"trout|catfish|tuna|amberjack|spadefish|triggerfish|greenling|cabezon|sculpin|smelt)\b")
+
+
 def fish_here_section(st, name):
     """Fish recorded around the station (collector/species.py: open-licence GBIF records), salt and brackish first."""
     got = FISH_HERE["st"].get(st["id"])
@@ -620,6 +626,10 @@ def fish_here_section(st, name):
         out.append(f'<details class="fishfresh"><summary>Fresh water nearby · {len(fresh)} species</summary>'
                    f'<p class="note">Rivers, creeks and ponds within {r} km, not the tidal water itself.</p>'
                    f'<ul class="fishlist">{"".join(li(x, c) for x, c in fresh)}</ul></details>')
+    tk = [x[0] for x, _ in water if x[0] and GAME_FISH.search(x[0])][:3]
+    if tk:
+        out.append(f'<p class="tip">{ico("fish")} Rigs and lures for {", ".join(amz(f"{n.lower()} fishing rig", n.lower()) for n in tk)}, '
+                   f'or see our <a href="{BASE}gear/#fishing">surf and pier fishing gear</a> (<a href="{BASE}privacy/#affiliate">affiliate links</a>).</p>')
     out.append('<p class="note">Records from <a href="https://www.gbif.org/">GBIF</a> datasets released under CC0 or CC BY 4.0 '
                '(museum collections, surveys and community sightings). It shows what has been found here, not a complete list. '
                'Check your state rules before keeping fish.</p>')
@@ -694,7 +704,9 @@ def radio_block(nwr, county=None):
     vhf = "".join(f"<li><b>Ch {c}</b> {esc(t)}</li>" for c, t in VHF)
     return (f'<details class="radio" id="radio"><summary>{ico("radio")}Marine radio: weather channels and VHF</summary>{tx_part}<h3>VHF marine channels</h3><ul class="radio-vhf">{vhf}</ul>'
             f'<p class="note">Weather radio broadcasts are continuous; VHF channels are the US standard. '
-            f'Local harbors and bridges may use others, so check your chart.</p></details>')
+            f'Local harbors and bridges may use others, so check your chart. '
+            f'No radio yet? A {amz("handheld marine VHF radio", "handheld VHF")} or a {amz("NOAA weather alert radio", "weather alert radio")} '
+            f'(<a href="{BASE}privacy/#affiliate">affiliate links</a>).</p></details>')
 
 
 REPORT_CHIPS = [("clear", "Clear water"), ("murky", "Murky"), ("calm", "Calm"), ("choppy", "Choppy"), ("rough", "Rough"),
@@ -1308,7 +1320,7 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 {prog_html}
 <h2>{ico("warn")} Stay safe</h2>
 {tipcards(KT_SAFETY_TIPS, "safe")}
-<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: boots, a rain shell and a tripod.</p>
+<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: {amz("waterproof rain boots", "boots")}, a {amz("packable rain jacket", "rain shell")} and a {amz("phone tripod", "tripod")}.</p>
 <h2>How these dates are worked out</h2>
 <p>For every spot we take NOAA's high and low tide predictions for the next 12 months and find each day's highest tide.
 The days in that spot's top 5% (about 18 days a year) are its king tide days, and days next to each other make one
@@ -1367,7 +1379,7 @@ dates, peak times and heights at every NOAA tide station.</p>
 <ul>{"".join(progs)}</ul>
 <h2>{ico("warn")} Stay safe</h2>
 {tipcards(KT_SAFETY_TIPS, "safe")}
-<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: boots, a rain shell and a tripod.</p>
+<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: {amz("waterproof rain boots", "boots")}, a {amz("packable rain jacket", "rain shell")} and a {amz("phone tripod", "tripod")}.</p>
 <p class="note">Dates come from NOAA tide predictions for the next 12 months: a spot's king tide days are its top 5% of
 daily high tides. Predictions don't include wind, storms or rain. Not for navigation.</p>
 </article>"""
@@ -1520,7 +1532,7 @@ def tp_state_page(code, rows, spots, today):
 <button type="button" class="kt-more" data-kt-more hidden>Show all {len(spot_rows)} spots</button>
 <h2>{ico("warn")} Tide pool tips</h2>
 {tipcards(TP_TIPS, "safe")}
-<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: grippy water shoes, a field guide, a headlamp.</p>
+<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: {amz("water shoes with grippy soles", "grippy water shoes")}, a {amz("tide pool field guide", "field guide")}, a {amz("waterproof headlamp", "headlamp")}.</p>
 <h2>How these dates are worked out</h2>
 <p>For every spot we take NOAA's low tide predictions for the next 12 months. A low counts as a tide pool low when it's in
 that spot's lowest 10% and comes between an hour after sunrise and sunset, so there's light for the hour before it. Heights are feet above mean lower low water (MLLW), the zero on
@@ -1563,7 +1575,7 @@ coastal state, from NOAA predictions for the next 12 months.</p>
 {"".join(blocks)}
 <h2>{ico("warn")} Tide pool tips</h2>
 {tipcards(TP_TIPS, "safe")}
-<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: grippy water shoes, a field guide, a headlamp.</p>
+<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: {amz("water shoes with grippy soles", "grippy water shoes")}, a {amz("tide pool field guide", "field guide")}, a {amz("waterproof headlamp", "headlamp")}.</p>
 <p class="note">A low counts as a tide pool low when it's in that spot's lowest 10% for the next 12 months and comes between
 an hour after sunrise and sunset. Each spot's own page lists every low tide. Not for navigation.</p>
 </article>"""
@@ -2146,10 +2158,10 @@ ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits 
 AMAZON_TAG = "shorebite-20"  # Amazon US Associates; the linked amazon.ca account (shorebiteca-20) is reached via OneLink
 
 
-def amz(q):
+def amz(q, label=None):
     """An Amazon search link (no invented products), tagged, marked as a paid link."""
     return (f'<a href="https://www.amazon.com/s?k={urllib.parse.quote_plus(q)}&amp;tag={AMAZON_TAG}" '
-            f'rel="sponsored nofollow noopener" target="_blank">{esc(q[:1].upper() + q[1:])}</a>')
+            f'rel="sponsored nofollow noopener" target="_blank">{esc(label or q[:1].upper() + q[1:])}</a>')
 
 
 GEAR = [  # section id, icon, heading, intro, [(icon, item search, why)]
