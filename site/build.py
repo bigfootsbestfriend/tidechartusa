@@ -2577,7 +2577,7 @@ def main():
         "how-to-read-a-tide-chart/", GUIDE.replace("__GUIDE_CARDS__", tipcards(GUIDE_TIPS, "learn")).replace("__GUIDE_CTA__", (
             f'<p class="cta-box">{ico("mail")} <span>Want this for your own beach? <a href="{BASE}#signup-band">Get its tides free by email '
             f'every Thursday</a>, with a heads-up before the best low tides.</span></p>') if ALERTS_API else ""), crumbs=[("Home", ""), ("How to read a tide chart", "how-to-read-a-tide-chart/")]))
-    write("about/index.html", page("About Shorebite", "Where our tide predictions come from.", "about/", ABOUT))
+    write("about/index.html", page("About Shorebite", "Who runs Shorebite and where our tide predictions, fishing times and marine data come from: NOAA, the National Weather Service and other official sources.", "about/", ABOUT))
     if ALERTS_API:
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
                                         ALERTS_PAGE.format(base=BASE, api=ALERTS_API),
