@@ -198,7 +198,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}gear/">Gear</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA. As an Amazon Associate we earn from qualifying purchases.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}gear/">Gear</a> · <a href="{BASE}contact/">Contact us</a> · <a href="{BASE}advertise/">Advertise with us</a> · <a href="{BASE}privacy/">Privacy policy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA. As an Amazon Associate we earn from qualifying purchases.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -2195,6 +2195,31 @@ def gear_page():
 </article>""")
 
 
+CONTACT = """<article class="prose">
+<h1>Contact us</h1>
+<p>Questions, a tide station or beach we should add, a correction, or something that isn't working? We read everything.</p>
+<p>Email us at <a href="mailto:hello@shorebite.com">hello@shorebite.com</a>.</p>
+<p>We only use your email to reply. See our <a href="/privacy/">privacy policy</a>.</p>
+</article>"""
+
+ADVERTISE = """<article class="prose">
+<h1>Advertise with us</h1>
+<p class="lede">Reach people planning their next trip to the water: anglers, beachgoers, tide poolers, kayakers and boaters checking the tide before they go.</p>
+<h2>Who reads Shorebite</h2>
+<p>Shore and pier anglers, surf fishers, families heading to the beach, tide pool explorers, paddlers, boaters and coastal travellers across every US coast. They come for tide charts, fishing times, king tides and tide pool days, and many sign up for weekly tide emails for their beach.</p>
+<h2>What we offer</h2>
+<ul>
+<li><b>Sponsored spots and states:</b> one sponsor on a beach, harbour or state tide page.</li>
+<li><b>Local businesses:</b> fishing charters, bait and tackle shops, kayak rentals, tide pool tours and marine centres, shown on the pages for the spots they serve.</li>
+<li><b>Tide emails:</b> a sponsor line in our weekly tide emails for a region.</li>
+<li><b>Gear:</b> fishing, beach and paddling gear that fits our guides.</li>
+</ul>
+<h2>Our rules</h2>
+<p>Every paid placement is clearly labelled. Sponsors never change tide data or what we write, we don't sell or share reader data, and we don't run pop-ups.</p>
+<p>Tell us what you have in mind and we'll send current traffic numbers and rates: <a href="mailto:hello@shorebite.com">hello@shorebite.com</a>.</p>
+</article>"""
+
+
 PRIVACY = """
 <article class="prose">
 <h1>Privacy</h1>
@@ -2543,12 +2568,14 @@ def main():
                                         ALERTS_PAGE.format(base=BASE, api=ALERTS_API),
                                         extra_head='<meta name="robots" content="noindex">'))
     write("gear/index.html", gear_page())
+    write("contact/index.html", page("Contact us", "Get in touch with Shorebite: questions, corrections and spots to add.", "contact/", CONTACT))
+    write("advertise/index.html", page("Advertise with us", "Reach anglers, beachgoers, tide poolers and boaters on Shorebite.", "advertise/", ADVERTISE))
     write("privacy/index.html", page("Privacy", "Privacy at Shorebite.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
-        urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/", "gear/"] + \
+        urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/", "gear/", "contact/", "advertise/"] + \
                [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages + kt_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc><lastmod>{built_at.date().isoformat()}</lastmod></url>" for u in urls)
