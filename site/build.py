@@ -150,6 +150,9 @@ def ga_tag():
 
 def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
     url = SITE_URL + "/" + path
+    if path == "":  # AvantLink affiliate site verification (home page only)
+        extra_head += ('<script type="text/javascript" src="https://classic.avantlink.com/affiliate_app_confirm.php'
+                       '?mode=js&amp;authResponse=7ef3276e1495bbc62d3255cec8735d223c06c4d3"></script>')
     robots = "" if LAUNCHED else '<meta name="robots" content="noindex, nofollow">'
     ld = ""
     if crumbs:
