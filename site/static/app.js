@@ -120,3 +120,22 @@
   }
 
 })();
+
+// Amazon affiliate links: Canadian visitors go to amazon.ca with the Canadian tag (the HTML keeps the amazon.com link).
+(() => {
+  let ca = false;
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    ca = /^America\/(Toronto|Montreal|Vancouver|Edmonton|Calgary|Winnipeg|Regina|Swift_Current|Halifax|Moncton|Glace_Bay|Goose_Bay|St_Johns|Whitehorse|Dawson|Dawson_Creek|Fort_Nelson|Creston|Yellowknife|Inuvik|Iqaluit|Rankin_Inlet|Cambridge_Bay|Resolute|Pangnirtung|Atikokan|Thunder_Bay|Nipigon|Rainy_River|Blanc-Sablon)$/.test(tz)
+      || /-CA$/i.test(navigator.language || "");
+  } catch {}
+  if (!ca) return;
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href*="amazon.com/"]');
+    if (!a) return;
+    const u = new URL(a.href);
+    u.hostname = "www.amazon.ca";
+    if (u.searchParams.get("tag") === "shorebite-20") u.searchParams.set("tag", "shorebiteca-20");
+    a.href = u.toString();
+  }, { capture: true });
+})();
