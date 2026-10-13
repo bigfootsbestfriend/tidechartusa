@@ -2150,8 +2150,6 @@ We download them every night, so each page always shows the next month. Sunrise,
 ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits and see which pages are useful. It sets cookies "
                   "and collects things like your approximate location, device and the pages you view, not your name or email. "
                   "You can opt out with <a href=\"https://tools.google.com/dlpage/gaoptout\">Google's opt-out add-on</a> or by blocking cookies. "
-                  "We also use Cloudflare Web Analytics, which sets no cookies and only gives us aggregated counts "
-                  "(<a href=\"https://www.cloudflare.com/privacypolicy/\">Cloudflare's privacy policy</a>). "
                   "We also use Clicky to see how visitors move through the site "
                   "(<a href=\"https://clicky.com/terms/privacy\">Clicky's privacy policy</a>). "
                   "If we add advertising, this page will be updated to name those partners and explain your choices.</p>") if GA_ID else \
