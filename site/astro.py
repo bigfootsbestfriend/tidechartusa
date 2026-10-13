@@ -6,6 +6,7 @@ which is plenty for a phase name and illumination.
 """
 
 import datetime as dt
+import functools
 import math
 
 J2000 = dt.date(2000, 1, 1)
@@ -39,9 +40,15 @@ def sun(lat, lng, day, tz):
     return rise, sset
 
 
-def _moon_pos(ts, lat, lng):
-    """Moon altitude (degrees) and hour angle (radians) at a unix time. Low-precision series
-    (as in suncalc), good to about a degree, which puts rise/set/transit within a few minutes."""
+_MOON_RADEC = {}
+
+
+def _moon_radec(ts):
+    """Moon (right ascension, sin dec, cos dec) at a unix time. Same for every station, so cached:
+    the moon_times grid lands on 5-minute marks shared by all stations."""
+    hit = _MOON_RADEC.get(ts)
+    if hit:
+        return hit
     rad = math.radians
     d = ts / 86400 + 2440587.5 - 2451545.0
     L = rad(218.316 + 13.176396 * d)
@@ -52,12 +59,21 @@ def _moon_pos(ts, lat, lng):
     e = rad(23.4397)
     ra = math.atan2(math.sin(lon) * math.cos(e) - math.tan(b) * math.sin(e), math.cos(lon))
     dec = math.asin(math.sin(b) * math.cos(e) + math.cos(b) * math.sin(e) * math.sin(lon))
-    H = rad(280.16 + 360.9856235 * d) + rad(lng) - ra
-    phi = rad(lat)
-    alt = math.asin(math.sin(phi) * math.sin(dec) + math.cos(phi) * math.cos(dec) * math.cos(H))
+    hit = _MOON_RADEC[ts] = (ra, math.sin(dec), math.cos(dec), rad(280.16 + 360.9856235 * d))
+    return hit
+
+
+def _moon_pos(ts, lat, lng):
+    """Moon altitude (degrees) and hour angle (radians) at a unix time. Low-precision series
+    (as in suncalc), good to about a degree, which puts rise/set/transit within a few minutes."""
+    ra, sdec, cdec, gst = _moon_radec(ts)
+    H = gst + math.radians(lng) - ra
+    phi = math.radians(lat)
+    alt = math.asin(math.sin(phi) * sdec + math.cos(phi) * cdec * math.cos(H))
     return math.degrees(alt), H
 
 
+@functools.lru_cache(maxsize=4096)
 def moon_times(lat, lng, day, tz, step=300):
     """Moonrise, moonset, overhead (upper transit) and underfoot (lower transit) for a local day.
     Returns a dict of lists of local datetimes; a day can have none or one of each."""

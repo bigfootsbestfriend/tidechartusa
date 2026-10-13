@@ -291,7 +291,7 @@ def load_station(st):
     tz = zone_for(st)
     events = []
     for t, v, kind in raw:
-        local = dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        local = dt.datetime.fromisoformat(t).replace(tzinfo=tz)
         events.append((local.timestamp(), v, kind))
     days = sorted({dt.datetime.fromtimestamp(t, tz).date() for t, _, _ in events})
     # The first and last days are partial (prediction window edges); keep full days only.
@@ -420,7 +420,7 @@ def currents_section(name, cur, week, tz):
     meta, dist, events = cur
     by_day = {}
     for t, v, k in events:
-        when = dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        when = dt.datetime.fromisoformat(t).replace(tzinfo=tz)
         by_day.setdefault(when.date(), []).append((when, v, k))
     rows = []
     for d in week:
@@ -920,7 +920,7 @@ def station_page(st, ctx):
     if ctx.get("cur"):
         meta, cdist, cev = ctx["cur"]
         data["cur"] = {"name": tidy(meta["name"]), "mi": cdist, "ev": [
-            [int(dt.datetime.strptime(t, "%Y-%m-%d %H:%M").replace(tzinfo=tz).timestamp()), v, k] for t, v, k in cev]}
+            [int(dt.datetime.fromisoformat(t).replace(tzinfo=tz).timestamp()), v, k] for t, v, k in cev]}
     town = st.get("town")  # (name, state code, miles, page path) or None
     if town and town[0].lower() not in name.lower():
         title = f"{town[0]}, {st['state']} Tide Chart & Tide Times ({name})"
@@ -1070,7 +1070,7 @@ def year_page(st, year, raw, tz):
     state = STATES.get(st["state"], st["state"])
     by_day = {}
     for t, v, k in raw:
-        w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+        w = dt.datetime.fromisoformat(f"{year}-{t}").replace(tzinfo=tz)
         by_day.setdefault(w.date(), []).append((w, v, k))
     highs = sorted(((v, w) for evs in by_day.values() for w, v, k in evs if k == "H"), reverse=True)
     lows = sorted((v, w) for evs in by_day.values() for w, v, k in evs if k == "L")
@@ -1629,7 +1629,7 @@ def clam_tides(raws, tz, code, today, days=150):
             if k != "L" or v > CLAM_CUT:
                 continue
             try:
-                w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+                w = dt.datetime.fromisoformat(f"{year}-{t}").replace(tzinfo=tz)
             except ValueError:
                 continue
             d = w.date()

@@ -20,7 +20,7 @@ def daily_highs(raws, tz):
             if k != "H":
                 continue
             try:
-                w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+                w = dt.datetime.fromisoformat(f"{year}-{t}").replace(tzinfo=tz)
             except ValueError:
                 continue
             d = w.date()

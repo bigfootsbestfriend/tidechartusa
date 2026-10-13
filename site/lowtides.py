@@ -21,7 +21,7 @@ def lows_for(raws, tz, lat, lng, today):
     for year, raw in raws.items():
         for t, v, k in raw:
             try:
-                w = dt.datetime.strptime(f"{year}-{t}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+                w = dt.datetime.fromisoformat(f"{year}-{t}").replace(tzinfo=tz)
             except ValueError:
                 continue
             if not today <= w.date() < end:
