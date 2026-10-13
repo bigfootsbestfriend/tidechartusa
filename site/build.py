@@ -198,7 +198,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}gear/">Gear</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}gear/">Gear</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA. As an Amazon Associate we earn from qualifying purchases.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -2188,7 +2188,7 @@ def gear_page():
                 "gear/", f"""<article class="prose">
 <h1>Gear for the tides</h1>
 <p class="lede">What's worth bringing for tide pools, beach walks, fishing and paddling, picked for safety and comfort near moving water.</p>
-<p class="note">As an Amazon Associate we earn from qualifying purchases. Links open Amazon searches so you can compare options; it costs you nothing extra.</p>
+<p class="note">Links below go to Amazon searches so you can compare options (<a href="{BASE}privacy/#affiliate">affiliate links</a>).</p>
 <p class="tools">{jump}</p>
 {sections}
 <p class="note">Always check the tide before you go, and never turn your back on the ocean.</p>
@@ -2208,7 +2208,7 @@ Every email has a one-click unsubscribe link, which deletes your subscription. Y
 favorites are stored only as totals per station. To stop spam and double votes we keep a scrambled code made from your
 IP address that changes every day and can't be turned back into the address. Your list of favorites stays on your own device.</p>
 {ANALYTICS_TEXT}
-<h2>Affiliate links</h2>
+<h2 id="affiliate">Affiliate links</h2>
 <p>Some links, such as on our <a href="/gear/">gear page</a>, go to Amazon. As an Amazon Associate we earn from qualifying purchases at no extra cost to you. Amazon may set its own cookies when you click.</p>
 </article>
 """
