@@ -92,9 +92,11 @@
 ["Kauai", "HI", 22.05, -159.52, {"r": 25, "region": true}],
 ["Waikiki", "HI", 21.2855, -157.8359],
 ["Lahaina", "HI", 20.8753, -156.6798],
-["Kihei", "HI", 20.7646, -156.4458]
+["Kihei", "HI", 20.7646, -156.4458],
+["Quintana", "TX", 28.9269, -95.3106]
 ],
 "aka": {
+"TX|Quintana": ["Quintana Beach", "Quintana Beach County Park"],
 "NJ|Ocean City": ["OCNJ"],
 "MD|Ocean City": ["OCMD"],
 "SC|Hilton Head Island": ["HHI"],
