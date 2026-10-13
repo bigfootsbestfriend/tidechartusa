@@ -12,6 +12,7 @@ import html
 import json
 import math
 import os
+import urllib.parse
 import re
 import shutil
 import statistics
@@ -197,7 +198,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 <footer class="foot"><div class="wrap">
 <p>Tide and current predictions and live readings from <a href="https://tidesandcurrents.noaa.gov/">NOAA CO-OPS</a>, buoys from <a href="https://www.ndbc.noaa.gov/">NOAA NDBC</a>, marine forecasts from the <a href="https://www.weather.gov/marine/">National Weather Service</a>, town names from <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0). Predictions refresh every night. Predictions are not observations: wind, pressure and river flow can move the real water level. <strong>Not for navigation.</strong></p>
 {f'<p class="foot-cta">{ico("mail")} <a href="{BASE}#signup-band">Get free weekly tide emails for your beach</a></p>' if ALERTS_API else ""}
-<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
+<p><a href="{BASE}about/">About</a> · <a href="{BASE}widget/">Free tide widget</a> · <a href="{BASE}king-tides/">King tides</a> · <a href="{BASE}tide-pools/">Tide pools</a> · <a href="{BASE}gear/">Gear</a> · <a href="{BASE}privacy/">Privacy</a> · <a href="{BASE}how-to-read-a-tide-chart/">How to read a tide chart</a> · Not affiliated with NOAA.</p>
 </div></footer>
 {js}
 <script src="{BASE}static/app.js?v={CSS_VER}" defer></script>
@@ -582,7 +583,7 @@ periods of about an hour on moonrise and moonset), dawn and dusk light, and how 
 <b>Best times</b> are the stretches of the day scoring near that day's top.</p>
 <div class="scroll"><table class="tides week fishing"><thead><tr><th>Day</th><th>Bite score</th><th>Best times</th><th>Major periods</th><th>Minor periods</th></tr></thead>
 <tbody>{"".join(rows)}</tbody></table></div>
-<p class="note">A planning aid, not a guarantee. Wind, water clarity, bait and pressure changes matter too; the forecast above adds live wind and pressure when you open the page.</p>"""
+<p class="note">A planning aid, not a guarantee. Wind, water clarity, bait and pressure changes matter too; the forecast above adds live wind and pressure when you open the page. <a href="{BASE}gear/#fishing">Surf and pier fishing gear</a>.</p>"""
 
 
 SPECIES_FILE = ROOT / "collector" / "species.json"
@@ -1307,6 +1308,7 @@ predictions for {total} spots in {esc(state)}, worked out for the next 12 months
 {prog_html}
 <h2>{ico("warn")} Stay safe</h2>
 {tipcards(KT_SAFETY_TIPS, "safe")}
+<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: boots, a rain shell and a tripod.</p>
 <h2>How these dates are worked out</h2>
 <p>For every spot we take NOAA's high and low tide predictions for the next 12 months and find each day's highest tide.
 The days in that spot's top 5% (about 18 days a year) are its king tide days, and days next to each other make one
@@ -1365,6 +1367,7 @@ dates, peak times and heights at every NOAA tide station.</p>
 <ul>{"".join(progs)}</ul>
 <h2>{ico("warn")} Stay safe</h2>
 {tipcards(KT_SAFETY_TIPS, "safe")}
+<p class="tip">{ico("waves")} <a href="{BASE}gear/#beach">What to bring for king tides</a>: boots, a rain shell and a tripod.</p>
 <p class="note">Dates come from NOAA tide predictions for the next 12 months: a spot's king tide days are its top 5% of
 daily high tides. Predictions don't include wind, storms or rain. Not for navigation.</p>
 </article>"""
@@ -1517,6 +1520,7 @@ def tp_state_page(code, rows, spots, today):
 <button type="button" class="kt-more" data-kt-more hidden>Show all {len(spot_rows)} spots</button>
 <h2>{ico("warn")} Tide pool tips</h2>
 {tipcards(TP_TIPS, "safe")}
+<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: grippy water shoes, a field guide, a headlamp.</p>
 <h2>How these dates are worked out</h2>
 <p>For every spot we take NOAA's low tide predictions for the next 12 months. A low counts as a tide pool low when it's in
 that spot's lowest 10% and comes between an hour after sunrise and sunset, so there's light for the hour before it. Heights are feet above mean lower low water (MLLW), the zero on
@@ -1559,6 +1563,7 @@ coastal state, from NOAA predictions for the next 12 months.</p>
 {"".join(blocks)}
 <h2>{ico("warn")} Tide pool tips</h2>
 {tipcards(TP_TIPS, "safe")}
+<p class="tip">{ico("walk")} <a href="{BASE}gear/#tidepools">What to bring for tide pooling</a>: grippy water shoes, a field guide, a headlamp.</p>
 <p class="note">A low counts as a tide pool low when it's in that spot's lowest 10% for the next 12 months and comes between
 an hour after sunrise and sunset. Each spot's own page lists every low tide. Not for navigation.</p>
 </article>"""
@@ -2138,6 +2143,58 @@ ANALYTICS_TEXT = ("<h2>Analytics</h2><p>We use Google Analytics to count visits 
                  ("<p>If we add advertising or analytics, those partners may use cookies to measure visits and show ads, "
                   "and this page will be updated to name them and explain your choices.</p>")
 
+AMAZON_TAG = "shorebite-20"  # Amazon US Associates; the linked amazon.ca account (shorebiteca-20) is reached via OneLink
+
+
+def amz(q):
+    """An Amazon search link (no invented products), tagged, marked as a paid link."""
+    return (f'<a href="https://www.amazon.com/s?k={urllib.parse.quote_plus(q)}&amp;tag={AMAZON_TAG}" '
+            f'rel="sponsored nofollow noopener" target="_blank">{esc(q[:1].upper() + q[1:])}</a>')
+
+
+GEAR = [  # section id, icon, heading, intro, [(icon, item search, why)]
+    ("tidepools", "pool", "Tide pooling", "Low tide is the time to explore. Rocks are slick and the water comes back fast.", [
+        ("walk", "water shoes with grippy soles", "Wet rock and barnacles are sharp and slippery. Closed toes, firm soles."),
+        ("search", "tide pool field guide", "Name what you find: anemones, sea stars, nudibranchs, crabs."),
+        ("sun", "waterproof headlamp", "The best minus tides are often at dawn or after dark."),
+        ("camera", "waterproof phone pouch", "Photos without dunking your phone.")]),
+    ("beach", "beach", "Beach walks and king tides", "Big tides flood paths and parking. Dress for spray and wet feet.", [
+        ("waves", "waterproof rain boots", "King tides cover low streets and boardwalks."),
+        ("wind", "packable rain jacket", "King tides come with winter storms and wind."),
+        ("camera", "phone tripod", "Steady shots to document how high the water got."),
+        ("clock", "tide clock", "A wall clock that shows hours to the next high or low.")]),
+    ("fishing", "fish", "Surf and pier fishing", "Match the gear to the water you fish. Check local rules and licences first.", [
+        ("fish", "surf fishing rod and reel combo", "A long rod to reach past the breakers."),
+        ("pier", "pier fishing rod and reel combo", "Shorter and stout for pier rails."),
+        ("fish", "saltwater fishing tackle box kit", "Hooks, sinkers and rigs that stand up to salt."),
+        ("chart", "rod holder sand spike", "Keeps your rod up while you wait for the bite."),
+        ("ruler", "fish measuring board", "Check legal sizes before you keep a fish.")]),
+    ("paddling", "kayak", "Kayak and boat safety", "Plan around the current and slack water, and carry the basics.", [
+        ("kayak", "kayak PFD life jacket", "Wear it. Tidal currents are stronger than they look."),
+        ("phone", "waterproof dry bag", "Keeps your phone, keys and snacks dry."),
+        ("radio", "handheld marine VHF radio", "Weather alerts and a way to call for help."),
+        ("warn", "safety whistle", "Required on many boats, and cheap insurance.")]),
+]
+
+
+def gear_page():
+    sections = "".join(
+        f'<h2 id="{sid}">{ico(icon)} {esc(title)}</h2><p>{esc(intro)}</p><div class="tips t-learn">' + "".join(
+            f'<div class="tcard"><span class="tc-i">{ico(i)}</span><div><b>{amz(q)}</b><p>{esc(why)}</p></div></div>'
+            for i, q, why in items) + "</div>"
+        for sid, icon, title, intro, items in GEAR)
+    jump = " · ".join(f'<a href="#{sid}">{esc(t)}</a>' for sid, _, t, _, _ in GEAR)
+    return page("Tide Pool, Beach and Fishing Gear", "What to bring for tide pooling, king tides, surf and pier fishing and kayaking.",
+                "gear/", f"""<article class="prose">
+<h1>Gear for the tides</h1>
+<p class="lede">What's worth bringing for tide pools, beach walks, fishing and paddling, picked for safety and comfort near moving water.</p>
+<p class="note">As an Amazon Associate we earn from qualifying purchases. Links open Amazon searches so you can compare options; it costs you nothing extra.</p>
+<p class="tools">{jump}</p>
+{sections}
+<p class="note">Always check the tide before you go, and never turn your back on the ocean.</p>
+</article>""")
+
+
 PRIVACY = """
 <article class="prose">
 <h1>Privacy</h1>
@@ -2151,6 +2208,8 @@ Every email has a one-click unsubscribe link, which deletes your subscription. Y
 favorites are stored only as totals per station. To stop spam and double votes we keep a scrambled code made from your
 IP address that changes every day and can't be turned back into the address. Your list of favorites stays on your own device.</p>
 {ANALYTICS_TEXT}
+<h2>Affiliate links</h2>
+<p>Some links, such as on our <a href="/gear/">gear page</a>, go to Amazon. As an Amazon Associate we earn from qualifying purchases at no extra cost to you. Amazon may set its own cookies when you click.</p>
 </article>
 """
 
@@ -2483,12 +2542,13 @@ def main():
         write("alerts/index.html", page("Tide emails", "Weekly tide times and weather warnings by email.", "alerts/",
                                         ALERTS_PAGE.format(base=BASE, api=ALERTS_API),
                                         extra_head='<meta name="robots" content="noindex">'))
+    write("gear/index.html", gear_page())
     write("privacy/index.html", page("Privacy", "Privacy at Shorebite.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
     if LAUNCHED:
-        urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/"] + \
+        urls = [""] + ["fishing/", "states/", "how-to-read-a-tide-chart/", "about/", "widget/", "gear/"] + \
                [f"tides/{slugify(STATES.get(c, c))}/" for c in groups] + [s["path"] for s in live] + [t[2] for t in town_pages] + year_pages + kt_pages
         write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
               + "".join(f"<url><loc>{SITE_URL}/{u}</loc><lastmod>{built_at.date().isoformat()}</lastmod></url>" for u in urls)
