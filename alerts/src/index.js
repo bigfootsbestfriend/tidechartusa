@@ -1,6 +1,7 @@
 // Shorebite email signups (Cloudflare Worker + D1 + Resend).
 //
-//   POST /subscribe     form {email, station, weekly, warn, lows, website (honeypot)}: emails a confirm link,
+//   POST /subscribe     form {email, station, weekly, warn, lows, website (honeypot)}: saves it right away
+//                       (single opt-in, Mike 2026-10-19) and sends a welcome email. Older confirm links still work;
 //                       then redirects to <site>/alerts/#check
 //   POST /confirm       JSON {t}: saves the subscription. Returns {state, station}.
 //   POST /unsubscribe   JSON {t} from <site>/alerts/?unsub=..., or the one-click List-Unsubscribe POST (?t=...)
@@ -63,21 +64,29 @@ async function subscribe(req, env) {
   if (!EMAIL.test(email) || !STATION.test(station)) return back(env, "invalid");
   const prefs = ["weekly", "warn", "lows"].map((k) => (form.get(k) ? 1 : 0)).join("");
   if (prefs === "000") return back(env, "nothing");
-  const token = await sign(env, `c|${email}|${station}|${prefs}|${Date.now()}`);
-  const link = `${env.SITE}/alerts/?confirm=${encodeURIComponent(token)}`;
+  // Single opt-in (Mike, 2026-10-19): save it straight away, then send a short welcome email.
+  const [weekly, warn, lows] = prefs.split("").map(Number);
+  await env.DB.prepare(
+    `INSERT INTO subs (email, station, weekly, warn, lows) VALUES (?1, ?2, ?3, ?4, ?5)
+     ON CONFLICT (email, station) DO UPDATE SET weekly = ?3, warn = ?4, lows = ?5`,
+  ).bind(email, station, weekly, warn, lows).run();
   const where = name ? ` for ${esc(name)}` : "";
-  await send(env, {
-    from: env.FROM,
-    to: [email],
-    subject: "Confirm your tide emails",
-    html: `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5;max-width:520px">
-<p>Thanks for signing up for tide emails${where} from Shorebite.</p>
-<p><a href="${link}" style="display:inline-block;background:#0b5c7a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700">Confirm my email</a></p>
-<p style="color:#666;font-size:14px">The link works for ${TOKEN_DAYS} days. If you didn't sign up, ignore this email and you won't hear from us.</p>
+  try {
+    await send(env, {
+      from: env.FROM,
+      to: [email],
+      subject: "You're signed up for tide emails",
+      html: `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5;max-width:520px">
+<p>Thanks for signing up for tide emails${where} from Shorebite! Your first one arrives with the next update.</p>
+<p><a href="${env.SITE}/" style="display:inline-block;background:#0b5c7a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700">Visit Shorebite</a></p>
+<p style="color:#666;font-size:14px">Every email has an unsubscribe link. If you didn't sign up, just reply and we'll remove you.</p>
 </div>`,
-    text: `Thanks for signing up for tide emails${name ? " for " + name : ""} from Shorebite.\n\nConfirm here: ${link}\n\nIf you didn't sign up, ignore this email.`,
-  });
-  return back(env, "check");
+      text: `Thanks for signing up for tide emails${name ? " for " + name : ""} from Shorebite! Your first one arrives with the next update.\n\nEvery email has an unsubscribe link. If you didn't sign up, just reply and we'll remove you.`,
+    });
+  } catch (err) {
+    console.error(err.stack || err);  // they're subscribed either way
+  }
+  return back(env, "subscribed");
 }
 
 async function confirm(req, env) {

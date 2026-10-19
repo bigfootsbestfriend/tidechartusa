@@ -768,6 +768,7 @@ You can choose a weekly tide email, weather warnings for that stretch of water, 
   const api = {api!r}, box = document.getElementById("al-msg"), q = new URLSearchParams(location.search);
   const say = (h) => (box.innerHTML = "<p>" + h + "</p>");
   const msgs = {{
+    subscribed: "<b>You're subscribed.</b> Your first email arrives with the next update. Every email has an unsubscribe link. Have another favorite spot? <a href=\"" + {base!r} + "\">Add it too</a>.",
     check: "<b>Almost done.</b> Check your inbox for an email from hello@shorebite.com and click the button to confirm. (Look in spam or promotions if it's not there in a minute.)",
     invalid: "That email address didn't look right. Please go back and try again.",
     nothing: "Pick at least one kind of email, then try again.",
