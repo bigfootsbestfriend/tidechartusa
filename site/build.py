@@ -2237,6 +2237,7 @@ ADVERTISE = """<article class="prose">
 PRIVACY = """
 <article class="prose">
 <h1>Privacy</h1>
+<p>This covers the shorebite.com website. The Shorebite app has its own <a href="/app/privacy/">app privacy policy</a>.</p>
 <p>This site has no accounts. The only personal information we collect is your email address, if you sign up for tide emails.</p>
 <h2>Tide emails</h2>
 <p>When you sign up we store your email address, the station you picked and which emails you want. We use them only to send those emails.
@@ -2249,6 +2250,44 @@ IP address that changes every day and can't be turned back into the address. You
 {ANALYTICS_TEXT}
 <h2 id="affiliate">Affiliate links</h2>
 <p>Some links, such as on our <a href="/gear/">gear page</a>, go to Amazon. As an Amazon Associate we earn from qualifying purchases at no extra cost to you. Amazon may set its own cookies when you click.</p>
+</article>
+"""
+
+
+APP_PRIVACY = """
+<article class="prose">
+<h1>Shorebite app privacy policy</h1>
+<p>This policy covers the Shorebite: Tides &amp; Fishing app for Android and iOS. Last updated October 19, 2026.</p>
+<p><strong>The short version:</strong> the app has no accounts, no ads and no analytics or tracking. We don't collect,
+store or sell any personal information. Everything you enter stays on your phone.</p>
+<h2>Your location</h2>
+<p>If you allow it, the app uses your phone's location to find the tide stations and fishing spots nearest you. Your
+location is used on the phone and is never sent to us. To look up live weather and the fish recorded near a spot, the
+app sends the coordinates of that spot (not your identity) to the public data services listed below. You can say no to
+location and pick a station by name instead, and you can turn location off at any time in your phone's settings.</p>
+<h2>Your catch log, trips and favorites</h2>
+<p>Catches, photos you add to them, trip plans, reminders and favorite stations are saved only on your phone. We can't
+see them. They are deleted when you uninstall the app. Sharing, printing or adding a trip to your calendar only happens
+when you tap to do it, and goes to the app you choose.</p>
+<h2>Notifications</h2>
+<p>Tide and trip reminders are scheduled on your phone. No notification service or server is involved.</p>
+<h2>Public data services the app connects to</h2>
+<ul>
+<li>NOAA Tides and Currents (api.tidesandcurrents.noaa.gov): official tide predictions for the station you open.</li>
+<li>US National Weather Service (api.weather.gov): forecasts and marine weather for the station's area.</li>
+<li>GBIF, the Global Biodiversity Information Facility (api.gbif.org): fish and wildlife records near a spot.</li>
+</ul>
+<p>These are public government and scientific services. Like any website, they receive your phone's IP address when the
+app asks them for data. The app sends no account, name, email or device ID to them.</p>
+<h2>Purchases</h2>
+<p>You buy the app through Google Play or the Apple App Store. They handle the payment under their own privacy policies;
+we never see your card or account details.</p>
+<h2>Children</h2>
+<p>The app is not aimed at children under 13 and collects no information from anyone.</p>
+<h2>Changes and contact</h2>
+<p>If the app ever starts collecting anything, we will update this page before that version is released. Questions:
+<a href="mailto:hello@shorebite.com">hello@shorebite.com</a>.</p>
+<p>The <a href="/privacy/">shorebite.com website privacy policy</a> covers the website and tide emails.</p>
 </article>
 """
 
@@ -2585,6 +2624,8 @@ def main():
     write("contact/index.html", page("Contact us", "Get in touch with Shorebite: questions, corrections and spots to add.", "contact/", CONTACT))
     write("advertise/index.html", page("Advertise with us", "Reach anglers, beachgoers, tide poolers and boaters on Shorebite.", "advertise/", ADVERTISE))
     write("privacy/index.html", page("Privacy", "Privacy at Shorebite.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
+    write("app/privacy/index.html", page("Shorebite app privacy policy", "Privacy policy for the Shorebite: Tides & Fishing app. "
+                                         "No accounts, no ads, no tracking: your location and catch log stay on your phone.", "app/privacy/", APP_PRIVACY))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
     write("static/search.json", json.dumps(search_index(live, town_pages), separators=(",", ":")))
