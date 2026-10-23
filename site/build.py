@@ -131,7 +131,7 @@ def day_label(d, short=False):
 
 # ---------- page shell ----------
 
-CSS_VER = "42"
+CSS_VER = "43"
 
 
 def ga_tag():
@@ -192,7 +192,7 @@ def page(title, desc, path, body, *, crumbs=None, scripts=(), extra_head=""):
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="sb-logo-r"><rect width="64" height="64" rx="15"/></clipPath><mask id="sb-logo-bite"><rect width="64" height="64" fill="#fff"/><circle cx="52" cy="13" r="5.2" fill="#000"/><circle cx="54.5" cy="20.5" r="4.6" fill="#000"/><circle cx="48" cy="7.5" r="4.4" fill="#000"/></mask></defs><g clip-path="url(#sb-logo-r)"><rect width="64" height="64" fill="#0b5c7a"/><circle cx="41" cy="20" r="12" fill="#f5b942" mask="url(#sb-logo-bite)"/><path d="M4 38c7 0 7-6 14-6s7 6 14 6 7-6 14-6 7 6 14 6v26H4z" fill="#5cc4e0"/><path d="M4 48c7 0 7-5 14-5s7 5 14 5 7-5 14-5 7 5 14 5v16H4z" fill="#fff"/></g></svg><span class="word">Shore<b>bite</b></span></a>
+<a class="brand" href="{BASE}" aria-label="Shorebite home"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="sb-logo-r"><rect width="64" height="64" rx="15"/></clipPath><linearGradient id="sb-logo-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b5c7a"/><stop offset="1" stop-color="#0a3f57"/></linearGradient><mask id="sb-logo-bite"><rect width="512" height="512" fill="#fff"/><circle cx="356" cy="132" r="40" fill="#000"/><circle cx="392" cy="182" r="38" fill="#000"/><circle cx="404" cy="240" r="34" fill="#000"/></mask></defs><g clip-path="url(#sb-logo-r)"><g transform="scale(.125)"><rect width="512" height="512" fill="url(#sb-logo-g)"/><circle cx="256" cy="236" r="140" fill="#F2B84B" mask="url(#sb-logo-bite)"/><path d="M0 330 C70 300 120 300 180 330 S300 365 360 332 S460 300 512 318 V512 H0Z" fill="#ffffff"/><path d="M0 392 C70 362 120 362 180 392 S300 427 360 394 S460 362 512 380 V512 H0Z" fill="#7fd3df"/></g></g></svg><span class="word">Shore<b>bite</b></span></a>
 <nav><a href="{BASE}favorites/" class="nav-saved" data-nav-saved hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Favorites<span data-saved-count></span></a><a href="{BASE}fishing/">Fishing</a><a href="{BASE}king-tides/">King tides</a><a href="{BASE}states/">States</a><a href="{BASE}how-to-read-a-tide-chart/">How to read</a></nav>
 </div></header>
 <main class="wrap">
