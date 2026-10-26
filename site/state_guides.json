@@ -1,0 +1,39 @@
+{
+ "_note": "Hand-written guides shown on state pages (state_page in build.py). Figures come from NOAA's 2026 high/low predictions (MLLW), checked 2026-10-26. {B} is replaced with the site base path. Keep numbers general enough to stay true each year.",
+ "FL": {
+  "title": "How tides work in Florida",
+  "paras": [
+   "Florida has two very different tide coasts. The Atlantic side gets two high tides and two low tides almost every day, and the swing grows as you head north. Around Miami (<a href=\"{B}tides/florida/virginia-key-biscayne-bay/\">Virginia Key</a>) the water typically moves about 2 feet between high and low. At <a href=\"{B}tides/florida/port-canaveral-trident-pier/\">Port Canaveral</a> it's a bit over 3 feet, at <a href=\"{B}tides/florida/jacksonville-beach/\">Jacksonville Beach</a> about 5 feet, and up at <a href=\"{B}tides/florida/fernandina-beach-amelia-river/\">Fernandina Beach</a> close to 6 feet, among the biggest in the state.",
+   "The Gulf side is gentler and stranger. Tampa Bay (<a href=\"{B}tides/florida/st-petersburg/\">St. Petersburg</a>, <a href=\"{B}tides/florida/clearwater-beach/\">Clearwater Beach</a>) gets a mixed tide: some days two highs, some days only one, with a typical swing under 2 feet. In the Panhandle, <a href=\"{B}tides/florida/pensacola/\">Pensacola</a> and <a href=\"{B}tides/florida/panama-city/\">Panama City</a> usually get just one high and one low a day. The Big Bend is the exception on the Gulf: <a href=\"{B}tides/florida/cedar-key/\">Cedar Key</a> swings close to 3 feet.",
+   "The Keys sit in between. <a href=\"{B}tides/florida/key-west/\">Key West</a> moves only about a foot on an average tide, so a few inches of wind-driven water can matter as much as the tide itself.",
+   "On the Atlantic side, the highest tides of the year usually come in the fall. Those are the king tides, and low streets in Miami Beach and along the Intracoastal can flood on a sunny day. The lowest tides tend to come on winter mornings on the Gulf, when a north wind pushes even more water out of the bays. For fishing, moving water is what matters: on the small Gulf tides, the hours when the tide is actually running are the ones to plan around."
+  ]
+ },
+ "CA": {
+  "title": "How tides work in California",
+  "paras": [
+   "California gets what's called a mixed tide: two highs and two lows most days, but the two highs (and the two lows) are often very different heights. A typical swing from high to low is 3.5 to 4 feet in Southern California and the Bay Area, and close to 5 feet on the North Coast at <a href=\"{B}tides/california/crescent-city/\">Crescent City</a> and <a href=\"{B}tides/california/humboldt-bay-north-spit/\">Humboldt Bay</a>.",
+   "The best low tides for tide pooling are the minus tides, when the water drops below the zero line on the chart. In Northern and Central California (<a href=\"{B}tides/california/pillar-point-harbor-half-moon-bay/\">Half Moon Bay</a>, <a href=\"{B}tides/california/monterey-monterey-bay/\">Monterey</a>, <a href=\"{B}tides/california/point-reyes/\">Point Reyes</a>) the deepest ones come on early summer mornings and reach about 2 feet below zero. In Southern California (<a href=\"{B}tides/california/la-jolla-scripps-institution-wharf/\">La Jolla</a>, <a href=\"{B}tides/california/santa-barbara/\">Santa Barbara</a>) the winter afternoon lows are just as deep, which makes December and January a good time to explore the rocks before sunset.",
+   "The highest tides arrive around the winter solstice in most of the state and reach about 7 feet at <a href=\"{B}tides/california/san-francisco-golden-gate/\">San Francisco</a> and close to 9 feet on the North Coast. Those are the king tides, and when they line up with a winter storm, low spots around the bay and the beaches can flood.",
+   "If you're fishing from a pier or the surf, a lot of anglers find the change of tide and the first couple of hours of the incoming tide the most active. Inside San Francisco Bay the times shift a lot from spot to spot, so pick the station closest to where you'll actually be."
+  ]
+ },
+ "MA": {
+  "title": "How tides work in Massachusetts",
+  "paras": [
+   "Massachusetts has some of the biggest tide differences you'll find within a short drive. On the North Shore and in Cape Cod Bay the water moves a lot: a typical swing is about 8.5 feet at <a href=\"{B}tides/massachusetts/salem-salem-harbor/\">Salem</a>, <a href=\"{B}tides/massachusetts/rockport/\">Rockport</a> and <a href=\"{B}tides/massachusetts/scituate-scituate-harbor/\">Scituate</a>, and about 9 to nearly 10 feet at <a href=\"{B}tides/massachusetts/plymouth/\">Plymouth</a>, <a href=\"{B}tides/massachusetts/provincetown/\">Provincetown</a> and <a href=\"{B}tides/massachusetts/wellfleet/\">Wellfleet</a>. The biggest highs of the year reach 11 to 12.5 feet.",
+   "Cross to the south side of the Cape and it's a different story. In Nantucket Sound and Vineyard Sound the swing drops to a few feet or less: about 1.5 feet at <a href=\"{B}tides/massachusetts/vineyard-haven-vineyard-hvn-hbr/\">Vineyard Haven</a>, under 2 feet at <a href=\"{B}tides/massachusetts/oceanographic-institution/\">Woods Hole</a>, 3 feet at <a href=\"{B}tides/massachusetts/nantucket/\">Nantucket</a> and under 4 feet at <a href=\"{B}tides/massachusetts/saquatucket-harbor/\">Saquatucket Harbor</a> in Harwich.",
+   "That's why the flats on the bay side of the Cape, around Wellfleet and Brewster, can stretch out a mile or more at low tide while the Sound side barely changes. It's also why the tide on the flats comes back in faster than people expect. Check the time of low tide before you walk out, and head back as soon as it turns.",
+   "Every spot here gets two highs and two lows a day. The tides in the Cape Cod Canal and around Woods Hole also push strong currents, so boaters and anglers should time those areas by the current as well as the tide."
+  ]
+ },
+ "WA": {
+  "title": "How tides work in Washington",
+  "paras": [
+   "Washington has the biggest tides on the US West Coast outside Alaska, and they get bigger the farther you go into Puget Sound. A typical swing is about 5 feet at <a href=\"{B}tides/washington/neah-bay/\">Neah Bay</a> and <a href=\"{B}tides/washington/port-townsend/\">Port Townsend</a>, 7.5 feet at <a href=\"{B}tides/washington/seattle-madison-st-elliott-bay/\">Seattle</a>, 8 feet at <a href=\"{B}tides/washington/tacoma-commencement-bay-sitcum-waterway/\">Tacoma</a> and about 10 feet at <a href=\"{B}tides/washington/budd-inlet-olympia-shoal/\">Olympia</a>, where the biggest highs of the year pass 16 feet.",
+   "The summer low tides are the ones locals plan around. From late spring through summer, the lowest tides of the day fall around midday and can drop more than 4 feet below zero in Puget Sound. That's when the beaches open up for tide pooling, clam digging and walking out on the flats. In winter it flips: the big lows move to the evening and night, and the highest tides of the year arrive on winter mornings around the holidays.",
+   "On the outer coast at <a href=\"{B}tides/washington/westport-point-chehalis/\">Westport</a> and <a href=\"{B}tides/washington/toke-point/\">Willapa Bay</a>, the swing is close to 7 feet, and the low tides are what decide the razor clam digs. In the San Juan Islands and along the Strait (<a href=\"{B}tides/washington/friday-harbor-san-juan-island/\">Friday Harbor</a>, <a href=\"{B}tides/washington/port-angeles/\">Port Angeles</a>), some days only bring one real high tide, so read the chart rather than assuming two.",
+   "With that much water moving, the currents through the passes and narrows are strong. If you're paddling or fishing around Deception Pass or the Tacoma Narrows, time it for slack water."
+  ]
+ }
+}

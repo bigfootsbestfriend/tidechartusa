@@ -547,6 +547,8 @@ def bite_days(st, days, tz, events, f, sun_by_day):
 
 
 SPECIES_GUIDE = json.loads((Path(__file__).resolve().parent / "species_guide.json").read_text())
+# Hand-written "How tides work in <state>" guides for the busiest states (state_guides.json).
+STATE_GUIDES = {k: v for k, v in json.loads((Path(__file__).resolve().parent / "state_guides.json").read_text()).items() if not k.startswith("_")}
 
 
 def region_of(st):
@@ -1855,17 +1857,22 @@ def state_page(code, stations, towns=(), kings=False, pools=False):
     items = "".join(lis)
     town_list = ("<h2>Tides by town</h2><ul class='towns'>" + "".join(
         f'<li><a href="{BASE}{p}">{esc(n)}</a></li>' for n, p in sorted(towns)) + "</ul>") if towns else ""
+    g = STATE_GUIDES.get(code)
+    guide_html = (f'<section class="state-guide" id="guide"><h2>{esc(g["title"])}</h2>' + "".join(f"<p>{x.replace('{B}', BASE)}</p>" for x in g["paras"])
+                  + '<p class="note">Figures are typical swings and yearly extremes from NOAA predictions. Weather can push water higher or lower.</p></section>') if g else ""
     body = f"""
 <h1>{esc(state)} tide charts</h1>
 <p class="lede">Tide times and charts for {len(stations)} NOAA tide stations in {esc(state)}. {refs} are reference
 stations with their own long-term measurements; the rest are calculated from the nearest reference station.</p>
+{f'<p class="tip">{ico("waves")} <a href="#guide">{esc(STATE_GUIDES[code]["title"])}</a>: how big the tides get, the best low tides and when the highest ones arrive.</p>' if code in STATE_GUIDES else ""}
 {list_tools(len(stations), refs)}
 {f'<p class="tip">{ico("mail")} Open any spot to see its tides, and to get them free by email every Thursday.</p>' if ALERTS_API else ""}
 {f'<p class="tip">{ico("cal")} <a href="{BASE}{kt_path(code)}">King tide dates for {esc(state)}</a>: when the year\'s highest tides arrive at every spot.</p>' if kings else ""}
 {f'<p class="tip">{ico("waves")} <a href="{BASE}razor-clams/#{code.lower()}">Razor clam tides</a> for {esc(state)}\'s clam beaches.</p>' if code in ("WA", "OR") else ""}
 {f'<p class="tip">{ico("pool")} <a href="{BASE}{tp_path(code)}">Best tide pool days in {esc(state)}</a>: the lowest daylight tides at every spot.</p>' if pools else ""}
 <ul class="stations">{items}</ul>
-{town_list}"""
+{town_list}
+{guide_html}"""
     path = f"tides/{slugify(state)}/"
     return path, page(f"{state} Tide Charts & Tide Times ({len(stations)} stations)",
                       f"High and low tide times, tide charts and tide tables for {len(stations)} places in {state}, from NOAA.",
