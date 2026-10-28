@@ -2263,8 +2263,8 @@ IP address that changes every day and can't be turned back into the address. You
 
 APP_PRIVACY = """
 <article class="prose">
-<h1>Shorebite app privacy policy</h1>
-<p>This policy covers the Shorebite: Tides &amp; Fishing app for Android and iOS. Last updated October 19, 2026.</p>
+<h1>Tide &amp; Reel app privacy policy</h1>
+<p>This policy covers the Tide &amp; Reel: Tides &amp; Fishing app for Android and iOS (formerly called Shorebite), made by the team behind shorebite.com. Last updated October 27, 2026.</p>
 <p><strong>The short version:</strong> the app has no accounts, no ads and no analytics or tracking. We don't collect,
 store or sell any personal information. Everything you enter stays on your phone.</p>
 <h2>Your location</h2>
@@ -2631,7 +2631,7 @@ def main():
     write("contact/index.html", page("Contact us", "Get in touch with Shorebite: questions, corrections and spots to add.", "contact/", CONTACT))
     write("advertise/index.html", page("Advertise with us", "Reach anglers, beachgoers, tide poolers and boaters on Shorebite.", "advertise/", ADVERTISE))
     write("privacy/index.html", page("Privacy", "Privacy at Shorebite.", "privacy/", PRIVACY.replace("{ANALYTICS_TEXT}", ANALYTICS_TEXT)))
-    write("app/privacy/index.html", page("Shorebite app privacy policy", "Privacy policy for the Shorebite: Tides & Fishing app. "
+    write("app/privacy/index.html", page("Tide & Reel app privacy policy", "Privacy policy for the Tide & Reel: Tides & Fishing app. "
                                          "No accounts, no ads, no tracking: your location and catch log stay on your phone.", "app/privacy/", APP_PRIVACY))
     write("404.html", page("Page not found", "Page not found.", "404.html",
                            f"<h1>Page not found</h1><p><a href='{BASE}'>Search for a tide station</a>.</p>"))
