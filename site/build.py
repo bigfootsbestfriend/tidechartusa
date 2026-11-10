@@ -2151,6 +2151,8 @@ and the best daylight low tides. The Shorebite app brings the same tides and fis
 <p>Shorebite used to be called Tide Chart USA. Same pages, same free tools, new name.</p>
 <p>The predictions come from the <a href="https://tidesandcurrents.noaa.gov/">NOAA Center for Operational Oceanographic Products and Services (CO-OPS)</a>.
 We download them every night, so each page always shows the next month. Sunrise, sunset and moon phase are calculated from each station's position.</p>
+<p>Shorebite is made by the same people behind <a href="https://worththeprompt.com/">Worth The Prompt</a>,
+where we test AI tools on our own PC and Mac.</p>
 <p>We are not affiliated with NOAA. Predictions are not observations, and this site is not for navigation.</p>
 </article>
 """
